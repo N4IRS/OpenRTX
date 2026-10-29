@@ -20,6 +20,63 @@ state_t state;
 pthread_mutex_t state_mutex;
 static long long int lastUpdate = 0;
 
+#ifdef NVMEM_DEBOUNCED_WRITE
+    #ifndef NVM_WRITE_DEBOUNCE_MS
+    #define NVM_WRITE_DEBOUNCE_MS 3000
+    #endif
+
+static settings_t lastSavedSettings;
+static settings_t lastSeenSettings;
+static channel_t  lastSavedChannel;
+static channel_t  lastSeenChannel;
+static long long  lastChangeTick = 0;
+
+/**
+ * Debounced persistence for platforms without a graceful shutdown.
+ *
+ * Settings and VFO changes are stored once they differ from what was last
+ * written and have been stable for NVM_WRITE_DEBOUNCE_MS. Comparing against
+ * snapshots means no "mark dirty" calls have to be scattered across every UI
+ * path that touches the state, and continuous adjustment (a knob, a held key)
+ * keeps postponing the write instead of triggering one per interval.
+ */
+static void persistDebounced(void)
+{
+    settings_t settings;
+    channel_t  channel;
+
+    pthread_mutex_lock(&state_mutex);
+    settings = state.settings;
+    channel  = state.channel;
+    pthread_mutex_unlock(&state_mutex);
+
+    // Any difference from the last value observed means the user is still
+    // adjusting something: restart the stability timer and wait.
+    if ((memcmp(&settings, &lastSeenSettings, sizeof(settings_t)) != 0) ||
+        (memcmp(&channel,  &lastSeenChannel,  sizeof(channel_t))  != 0))
+    {
+        lastSeenSettings = settings;
+        lastSeenChannel  = channel;
+        lastChangeTick   = getTick();
+        return;
+    }
+
+    bool differsFromSaved =
+        (memcmp(&settings, &lastSavedSettings, sizeof(settings_t)) != 0) ||
+        (memcmp(&channel,  &lastSavedChannel,  sizeof(channel_t))  != 0);
+
+    if (!differsFromSaved)
+        return;
+
+    if ((getTick() - lastChangeTick) < NVM_WRITE_DEBOUNCE_MS)
+        return;
+
+    nvm_writeSettingsAndVfo(&settings, &channel);
+    lastSavedSettings = settings;
+    lastSavedChannel  = channel;
+}
+#endif
+
 // Commonly used frequency steps, expressed in Hz
 const uint32_t freq_steps[] = { 1000,  5000,  6250,  10000, 12500,
                                 15000, 20000, 25000, 50000, 100000 };
@@ -67,6 +124,15 @@ void state_init()
     if (state.settings.brightness > 100) {
         state.settings.brightness = 100;
     }
+
+#ifdef NVMEM_DEBOUNCED_WRITE
+    // Snapshot what the radio considers persisted, so the debounced writer
+    // only triggers on real changes.
+    lastSavedSettings = state.settings;
+    lastSavedChannel  = state.channel;
+    lastSeenSettings  = state.settings;
+    lastSeenChannel   = state.channel;
+#endif
 }
 
 void state_terminate()
@@ -123,6 +189,10 @@ void state_task()
 #endif
 
     pthread_mutex_unlock(&state_mutex);
+
+#ifdef NVMEM_DEBOUNCED_WRITE
+    persistDebounced();
+#endif
 
     ui_pushEvent(EVENT_STATUS, 0);
 }
