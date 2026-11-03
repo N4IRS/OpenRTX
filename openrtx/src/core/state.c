@@ -14,6 +14,7 @@
 #include "hwconfig.h"
 #include "interfaces/platform.h"
 #include "interfaces/nvmem.h"
+#include "core/crc.h"
 #include "interfaces/delays.h"
 
 state_t state;
@@ -25,20 +26,23 @@ static long long int lastUpdate = 0;
     #define NVM_WRITE_DEBOUNCE_MS 3000
     #endif
 
-static settings_t lastSavedSettings;
-static settings_t lastSeenSettings;
-static channel_t  lastSavedChannel;
-static channel_t  lastSeenChannel;
+// Use CRC (CCITT) hashes instead of full struct copies to detect changes.
+// Data structures are large (settings_t ~84 B, channel_t ~94 B) and keeping
+// multiple full copies wastes RAM on constrained MCUs (per Silvano's review).
+static uint16_t lastSavedSettingsCrc;
+static uint16_t lastSeenSettingsCrc;
+static uint16_t lastSavedChannelCrc;
+static uint16_t lastSeenChannelCrc;
 static long long  lastChangeTick = 0;
 
 /**
  * Debounced persistence for platforms without a graceful shutdown.
  *
  * Settings and VFO changes are stored once they differ from what was last
- * written and have been stable for NVM_WRITE_DEBOUNCE_MS. Comparing against
- * snapshots means no "mark dirty" calls have to be scattered across every UI
- * path that touches the state, and continuous adjustment (a knob, a held key)
- * keeps postponing the write instead of triggering one per interval.
+ * written and have been stable for NVM_WRITE_DEBOUNCE_MS. Comparing CRC
+ * hashes (CCITT) instead of full structs saves RAM and detects changes in
+ * O(1) space. Continuous adjustment (a knob, a held key) keeps postponing
+ * the write instead of triggering one per interval.
  */
 static void persistDebounced(void)
 {
@@ -50,20 +54,22 @@ static void persistDebounced(void)
     channel  = state.channel;
     pthread_mutex_unlock(&state_mutex);
 
+    uint16_t settingsCrc = crc_ccitt(&settings, sizeof(settings_t));
+    uint16_t channelCrc  = crc_ccitt(&channel,  sizeof(channel_t));
+
     // Any difference from the last value observed means the user is still
     // adjusting something: restart the stability timer and wait.
-    if ((memcmp(&settings, &lastSeenSettings, sizeof(settings_t)) != 0) ||
-        (memcmp(&channel,  &lastSeenChannel,  sizeof(channel_t))  != 0))
+    if (settingsCrc != lastSeenSettingsCrc || channelCrc != lastSeenChannelCrc)
     {
-        lastSeenSettings = settings;
-        lastSeenChannel  = channel;
-        lastChangeTick   = getTick();
+        lastSeenSettingsCrc = settingsCrc;
+        lastSeenChannelCrc  = channelCrc;
+        lastChangeTick      = getTick();
         return;
     }
 
     bool differsFromSaved =
-        (memcmp(&settings, &lastSavedSettings, sizeof(settings_t)) != 0) ||
-        (memcmp(&channel,  &lastSavedChannel,  sizeof(channel_t))  != 0);
+        (settingsCrc != lastSavedSettingsCrc) ||
+        (channelCrc  != lastSavedChannelCrc);
 
     if (!differsFromSaved)
         return;
@@ -72,8 +78,8 @@ static void persistDebounced(void)
         return;
 
     nvm_writeSettingsAndVfo(&settings, &channel);
-    lastSavedSettings = settings;
-    lastSavedChannel  = channel;
+    lastSavedSettingsCrc = settingsCrc;
+    lastSavedChannelCrc  = channelCrc;
 }
 #endif
 
@@ -126,12 +132,13 @@ void state_init()
     }
 
 #ifdef NVMEM_DEBOUNCED_WRITE
-    // Snapshot what the radio considers persisted, so the debounced writer
-    // only triggers on real changes.
-    lastSavedSettings = state.settings;
-    lastSavedChannel  = state.channel;
-    lastSeenSettings  = state.settings;
-    lastSeenChannel   = state.channel;
+    // Initialize CRC baselines so the first persistDebounced() call doesn't
+    // trigger a spurious write of unchanged data.
+    lastSavedSettingsCrc = crc_ccitt(&state.settings, sizeof(settings_t));
+    lastSeenSettingsCrc  = lastSavedSettingsCrc;
+    lastSavedChannelCrc = crc_ccitt(&state.channel, sizeof(channel_t));
+    lastSeenChannelCrc  = lastSavedChannelCrc;
+    lastChangeTick      = getTick();
 #endif
 }
 
