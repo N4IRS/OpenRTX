@@ -93,7 +93,7 @@ static const settings_t default_settings =
   ,180                          // Default P25 TX BB level (0.95x spec deviation)
   ,0                            // Empty P25 Source ID
   ,0                            // Empty P25 Destination ID
-  ,293                          // Default P25 NAC
+  ,0x293                        // Default P25 NAC (12 bit, hex)
   ,1                            // P25 RX invert
   ,0                            // P25 TX invert
 #endif
