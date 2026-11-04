@@ -22,9 +22,9 @@ pthread_mutex_t state_mutex;
 static long long int lastUpdate = 0;
 
 #ifdef NVMEM_DEBOUNCED_WRITE
-    #ifndef NVM_WRITE_DEBOUNCE_MS
-    #define NVM_WRITE_DEBOUNCE_MS 3000
-    #endif
+#ifndef NVM_WRITE_DEBOUNCE_MS
+#define NVM_WRITE_DEBOUNCE_MS 3000
+#endif
 
 // Use CRC (CCITT) hashes instead of full struct copies to detect changes.
 // Data structures are large (settings_t ~84 B, channel_t ~94 B) and keeping
@@ -33,7 +33,7 @@ static uint16_t lastSavedSettingsCrc;
 static uint16_t lastSeenSettingsCrc;
 static uint16_t lastSavedChannelCrc;
 static uint16_t lastSeenChannelCrc;
-static long long  lastChangeTick = 0;
+static long long lastChangeTick = 0;
 
 /**
  * Debounced persistence for platforms without a graceful shutdown.
@@ -47,29 +47,28 @@ static long long  lastChangeTick = 0;
 static void persistDebounced(void)
 {
     settings_t settings;
-    channel_t  channel;
+    channel_t channel;
 
     pthread_mutex_lock(&state_mutex);
     settings = state.settings;
-    channel  = state.channel;
+    channel = state.channel;
     pthread_mutex_unlock(&state_mutex);
 
     uint16_t settingsCrc = crc_ccitt(&settings, sizeof(settings_t));
-    uint16_t channelCrc  = crc_ccitt(&channel,  sizeof(channel_t));
+    uint16_t channelCrc = crc_ccitt(&channel, sizeof(channel_t));
 
     // Any difference from the last value observed means the user is still
     // adjusting something: restart the stability timer and wait.
-    if (settingsCrc != lastSeenSettingsCrc || channelCrc != lastSeenChannelCrc)
-    {
+    if (settingsCrc != lastSeenSettingsCrc
+        || channelCrc != lastSeenChannelCrc) {
         lastSeenSettingsCrc = settingsCrc;
-        lastSeenChannelCrc  = channelCrc;
-        lastChangeTick      = getTick();
+        lastSeenChannelCrc = channelCrc;
+        lastChangeTick = getTick();
         return;
     }
 
-    bool differsFromSaved =
-        (settingsCrc != lastSavedSettingsCrc) ||
-        (channelCrc  != lastSavedChannelCrc);
+    bool differsFromSaved = (settingsCrc != lastSavedSettingsCrc)
+                         || (channelCrc != lastSavedChannelCrc);
 
     if (!differsFromSaved)
         return;
@@ -79,7 +78,7 @@ static void persistDebounced(void)
 
     nvm_writeSettingsAndVfo(&settings, &channel);
     lastSavedSettingsCrc = settingsCrc;
-    lastSavedChannelCrc  = channelCrc;
+    lastSavedChannelCrc = channelCrc;
 }
 #endif
 
@@ -112,10 +111,10 @@ void state_init()
     // Initialize CRC baselines so the first persistDebounced() call doesn't
     // trigger a spurious write of unchanged data.
     lastSavedSettingsCrc = crc_ccitt(&state.settings, sizeof(settings_t));
-    lastSeenSettingsCrc  = lastSavedSettingsCrc;
+    lastSeenSettingsCrc = lastSavedSettingsCrc;
     lastSavedChannelCrc = crc_ccitt(&state.channel, sizeof(channel_t));
-    lastSeenChannelCrc  = lastSavedChannelCrc;
-    lastChangeTick      = getTick();
+    lastSeenChannelCrc = lastSavedChannelCrc;
+    lastChangeTick = getTick();
 #endif
 
 /*

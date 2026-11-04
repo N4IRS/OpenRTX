@@ -338,12 +338,16 @@ tests/platform/tonegen.c
 EOF
 )
 
+# Directories listed here are skipped entirely. openrtx/src/imbe_vocoder is
+# vendored third-party code (imbe_embedded): keep its upstream formatting so
+# the tree stays diffable against origin.
 EXCLUDE_DIRS=$(cat <<-EOF
 lib
 platform/mcu/CMSIS
 platform/mcu/MK22FN512xxx12/drivers/usb
 platform/mcu/STM32F4xx/drivers/usb
 openrtx/include/fonts
+openrtx/src/imbe_vocoder
 scripts
 subprojects
 EOF

@@ -284,7 +284,8 @@ void OpMode_P25::rxState(rtxStatus_t *const status)
     } else
         p25LDUBuffer.reset();
 
-#if !defined(PLATFORM_CS7000P) && !defined(PLATFORM_MD3x0) && !defined(PLATFORM_C62)
+#if !defined(PLATFORM_CS7000P) && !defined(PLATFORM_MD3x0) \
+    && !defined(PLATFORM_C62)
     if (platform_getPttStatus() && host_found)
 #else
     if (platform_getPttStatus())
@@ -371,8 +372,7 @@ void OpMode_P25::txState(rtxStatus_t *const status)
         if ((txDbg % 50) == 0)
             printk("P25 TX: t=%d ldu pairs=%u pending=%u pair_ms=%d\n",
                    (int)(k_uptime_get() / 1000), txDbg,
-                   p25PacketBuffer.getData(),
-                   (int)(k_uptime_get() - t0));
+                   p25PacketBuffer.getData(), (int)(k_uptime_get() - t0));
     } else
         sleepFor(0, 2);
 #endif

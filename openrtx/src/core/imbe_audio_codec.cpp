@@ -101,16 +101,15 @@ static const int micGain = CONFIG_MIC_GAIN;
  * The filter is an RBJ biquad designed for fs = 8 kHz; the coefficients
  * below are their normalised values.
  */
-struct biquad
-{
+struct biquad {
     float b0, b1, b2, a1, a2;
     float x1, x2, y1, y2;
 };
 
 static inline float biquadProcess(struct biquad *q, float x)
 {
-    float y = q->b0 * x + q->b1 * q->x1 + q->b2 * q->x2
-            - q->a1 * q->y1 - q->a2 * q->y2;
+    float y = q->b0 * x + q->b1 * q->x1 + q->b2 * q->x2 - q->a1 * q->y1
+            - q->a2 * q->y2;
 
     q->x2 = q->x1;
     q->x1 = x;
@@ -122,8 +121,8 @@ static inline float biquadProcess(struct biquad *q, float x)
 
 /* 200 Hz Butterworth high-pass: -3 dB at 200 Hz, -24 dB at 50 Hz. */
 static const struct biquad txHighPass = {
-    0.89485775f, -1.78971550f, 0.89485775f,
-    -1.77863008f, 0.80080093f, 0.0f, 0.0f, 0.0f, 0.0f
+    0.89485775f, -1.78971550f, 0.89485775f, -1.77863008f, 0.80080093f,
+    0.0f,        0.0f,         0.0f,        0.0f
 };
 #endif
 

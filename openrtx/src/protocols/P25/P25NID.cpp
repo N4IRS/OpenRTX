@@ -97,7 +97,6 @@ bool CP25NID::decode(const unsigned char *data)
     unsigned char nid[P25_NID_LENGTH_BYTES];
     CP25Utils::decode(data, nid, 48U, 114U);
 
-
     unsigned int errs = CP25Utils::compare(nid, m_ldu1, P25_NID_LENGTH_BYTES);
     if (errs < MAX_NID_ERRS) {
         m_duid = P25_DUID_LDU1;

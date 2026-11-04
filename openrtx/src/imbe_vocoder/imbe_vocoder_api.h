@@ -13,7 +13,8 @@
 
 #include "imbe2.h"
 
-class imbe_vocoder {
+class imbe_vocoder
+{
 public:
     imbe_vocoder()
     {

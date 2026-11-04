@@ -273,8 +273,7 @@ bool P25_IO::start_tx(const bool invertP)
         return false;
 
     outStream = audioStream_start(outPath, baseband_txbuffer.get(),
-                                  2 * P25_TX_HALF_SAMPLES,
-                                  P25_TX_SAMPLE_RATE,
+                                  2 * P25_TX_HALF_SAMPLES, P25_TX_SAMPLE_RATE,
                                   STREAM_OUTPUT | BUF_CIRC_DOUBLE);
 
     if (outStream < 0)
@@ -407,8 +406,7 @@ void update_tx(uint16_t length, bool flush)
         // Transmission is ongoing, syncronise with stream end before proceeding
         outputStream_sync(outStream, true);
         idleBuffer = outputStream_getIdleBuffer(outStream);
-        memset(idleBuffer, 0x00,
-               P25_TX_HALF_SAMPLES * sizeof(stream_sample_t));
+        memset(idleBuffer, 0x00, P25_TX_HALF_SAMPLES * sizeof(stream_sample_t));
         bufSize = 0;
     }
 }
