@@ -235,7 +235,7 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
             else
             {
                 gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-                          color_white, "P25 NOLOCK");
+                          color_white, "P25 Idle");
             }
             break;
         }
