@@ -35,6 +35,13 @@ public:
         imbe2_decode(m_dec, pcm, imbe);
     }
 
+    /* enhanced encoder: leashed-continuity pitch tracking, wider voicing
+       thresholds and a spectral noise gate (see imbe_encoder::encode) */
+    void set_enh(int on)
+    {
+        imbe2_encoder_set_enh(m_enc, on);
+    }
+
 private:
     /* imbe_embedded worst case: encoder 8608 B (noise-gate history),
        decoder 1932 B - see imbe2_state_size()/README */

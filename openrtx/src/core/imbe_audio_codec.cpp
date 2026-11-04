@@ -140,6 +140,20 @@ static const int rxGain = 1;
 extern CRingBuffer<uint8_t> p25PacketBuffer;
 imbe_vocoder vocoder;
 
+/*
+ * Enhanced encoder mode: leashed-continuity pitch tracking (prefers the
+ * previous frame's pitch among near-equal candidates), slightly wider
+ * voicing thresholds and a spectral noise gate with a 3 s minimum-
+ * statistics floor.
+ *
+ * Offline A/B on speech: identical level and spectral centroid on
+ * continuous speech, no gated speech frames, onsets re-open within one
+ * frame (20 ms) after a noisy pause, and quiet speech without background
+ * noise is never gated.  The pitch-tracking part is perceptual and cannot
+ * be judged from these measurements, so it is being evaluated on air.
+ */
+static const int txEnh = 1;
+
 static void alawDecode(void);
 
 static void *encodeFunc(void *arg);
@@ -267,6 +281,8 @@ static void *encodeFunc(void *arg)
     }
 
     dsp_resetState(encDcBlock);
+
+    vocoder.set_enh(txEnh);
 
     int byte_count = 0;
 #ifndef PLATFORM_MOD17
