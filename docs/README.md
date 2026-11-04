@@ -7,6 +7,7 @@ documentation.
 | Document | Contents |
 |---|---|
 | [`status.md`](status.md) | Current branch/build state, what works, known limitations |
+| [`c62-hardware.md`](c62-hardware.md) | Board hardware reference: SoC, memory map, RF, audio, display, keys, power |
 | [`p25.md`](p25.md) | P25 Phase 1 operation, settings, verification procedure, TX bug history |
 | [`build-setup.md`](build-setup.md) | Toolchain and west workspace setup |
 | [`build-environment.md`](build-environment.md) | Rebuilding the build environment from scratch |

@@ -8,6 +8,11 @@
 
 This target is based on the ListenAI CSK6011B (CSK6 family) SoC.
 
+Hardware reference — memory map, RF, audio, display, keys and power:
+[`docs/c62-hardware.md`](../../../docs/c62-hardware.md). The pin and
+partition assignments below are defined in `c62.dts`, which is the authoritative
+source.
+
 ## Building
 
 For the following commands enter shell with the ListenAI environment

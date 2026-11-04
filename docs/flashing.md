@@ -22,9 +22,11 @@ adjust the `-s` argument.
 | `0x200000` | 0xB0000 | `factory_res0` OEM resources | preserved |
 | `0x2B0000` | 0xA0000 | **OpenRTX storage** | erased in every factory dump examined |
 | `0x350000` | 0x60000 | `factory_res1` OEM resources | preserved |
-| `0x3B0000` | 0x30000 | `factory_cal` OEM settings + calibration journal | OEM rewrites with defaults if invalid — **never write here** |
+| `0x3B0000` | 0x10000 | `factory_cal` OEM settings + calibration journal | OEM rewrites with defaults if invalid — **never write here** |
+| `0x3C0000` | 0x40000 | `factory_chan` OEM channel store | **never write here** |
 
-Source: `OpenRTX/platform/targets/c62/c62.dts`.
+Source: `OpenRTX/platform/targets/c62/c62.dts`. The hardware itself is
+described in [`c62-hardware.md`](c62-hardware.md).
 
 ## Backup (do this before first flash)
 
