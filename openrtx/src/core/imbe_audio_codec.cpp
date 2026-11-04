@@ -82,6 +82,49 @@ static const uint8_t micGainPost = 3;
 #define CONFIG_MIC_GAIN 13
 #endif
 static const int micGain = CONFIG_MIC_GAIN;
+
+/*
+ * Transmit audio shaping for IMBE.
+ *
+ * IMBE codes a 3.4 kHz-wide spectrum, so rumble below the speech band only
+ * consumes spectral bits: this microphone picks up a lot of it (handling,
+ * breath, proximity effect), and the received audio came out boomy and
+ * dull.  A second-order high-pass at 200 Hz makes the coded spectrum
+ * closer to speech, which the receiver renders as noticeably clearer
+ * audio.
+ *
+ * A high shelf was also tried, because the microphone rolls off towards
+ * the top of the band: +5 dB at 1.8 kHz was clearer but harsh, and
+ * +2.5 dB was still harsh, while the high-pass alone is clear.  So only
+ * the high-pass ships; do not raise the shelf without an on-air A/B.
+ *
+ * The filter is an RBJ biquad designed for fs = 8 kHz; the coefficients
+ * below are their normalised values.
+ */
+struct biquad
+{
+    float b0, b1, b2, a1, a2;
+    float x1, x2, y1, y2;
+};
+
+static inline float biquadProcess(struct biquad *q, float x)
+{
+    float y = q->b0 * x + q->b1 * q->x1 + q->b2 * q->x2
+            - q->a1 * q->y1 - q->a2 * q->y2;
+
+    q->x2 = q->x1;
+    q->x1 = x;
+    q->y2 = q->y1;
+    q->y1 = y;
+
+    return y;
+}
+
+/* 200 Hz Butterworth high-pass: -3 dB at 200 Hz, -24 dB at 50 Hz. */
+static const struct biquad txHighPass = {
+    0.89485775f, -1.78971550f, 0.89485775f,
+    -1.77863008f, 0.80080093f, 0.0f, 0.0f, 0.0f, 0.0f
+};
 #endif
 
 /*
@@ -227,6 +270,9 @@ static void *encodeFunc(void *arg)
 
     int byte_count = 0;
 #ifndef PLATFORM_MOD17
+    /* Fresh filter state for every transmission. */
+    struct biquad txHpf = txHighPass;
+
     uint8_t imbe[11] = { 0x04U, 0x0CU, 0xFDU, 0x7BU, 0xFBU, 0x7DU,
                          0xF2U, 0x7BU, 0x3DU, 0x9EU, 0x45U };
     int16_t cRxBuffer[160 * sizeof(int16_t)];
@@ -268,9 +314,16 @@ static void *encodeFunc(void *arg)
         // saturating multiply, so a pedestal residual can no longer wrap
         // around int16 and bury speech at the vocoder input.
 #ifndef PLATFORM_MOD17
-        for (size_t i = 0; i < audio.len; i++)
-            audio.data[i] = scaleSample(
-                dsp_dcBlockFilter(&encDcBlock, audio.data[i]), micGain);
+        for (size_t i = 0; i < audio.len; i++) {
+            float sample = dsp_dcBlockFilter(&encDcBlock, audio.data[i]);
+            sample = biquadProcess(&txHpf, sample);
+            sample *= micGain;
+            if (sample > 32767.0f)
+                sample = 32767.0f;
+            else if (sample < -32768.0f)
+                sample = -32768.0f;
+            audio.data[i] = static_cast<int16_t>(sample);
+        }
 #else
         for (size_t i = 0; i < audio.len; i++)
             audio.data[i] *= micGainPre;
