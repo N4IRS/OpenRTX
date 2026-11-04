@@ -52,6 +52,22 @@
 #include <stdlib.h>
 #include <math.h>
 #include "ui/ui_default.h"
+
+#if defined(CONFIG_P25)
+static void _ui_changeBBLevel(uint8_t *level, int variation)
+{
+    uint16_t value = *level;
+    value         += variation;
+
+    if(value > 255)
+        value = 1;
+
+    if(value < 1)
+        value = 255;
+
+    *level = value;
+}
+#endif
 #include "rtx/rtx.h"
 #include "interfaces/platform.h"
 #include "interfaces/display.h"
@@ -98,6 +114,9 @@ extern void _ui_drawSettingsTimeDateSet(ui_state_t* ui_state);
 #endif
 extern void _ui_drawSettingsDisplay(ui_state_t* ui_state);
 extern void _ui_drawSettingsM17(ui_state_t* ui_state);
+#if defined(CONFIG_P25)
+extern void _ui_drawSettingsP25(ui_state_t* ui_state);
+#endif
 extern void _ui_drawSettingsFM(ui_state_t* ui_state);
 extern void _ui_drawSettingsVoicePrompts(ui_state_t* ui_state);
 extern void _ui_drawSettingsReset2Defaults(ui_state_t* ui_state);
@@ -130,6 +149,9 @@ const char *settings_items[] =
     "Radio",
 #ifdef CONFIG_M17
     "M17",
+#endif
+#ifdef CONFIG_P25
+    "P25",
 #endif
     "FM",
     "Accessibility",
@@ -173,6 +195,19 @@ const char * settings_m17_items[] =
     "CAN",
     "CAN RX Check"
 };
+
+#if defined(CONFIG_P25)
+const char * p25_items[] =
+{
+    "DMR Id",
+    "Dst Id",
+    "NAC (dec)",
+    "RX Level",
+    "TX Level",
+    "RX Invert",
+    "TX Invert"
+};
+#endif
 
 const char* settings_fm_items[] =
 {
@@ -263,6 +298,9 @@ const uint8_t settings_gps_num = sizeof(settings_gps_items)/sizeof(settings_gps_
 const uint8_t settings_radio_num = sizeof(settings_radio_items)/sizeof(settings_radio_items[0]);
 #ifdef CONFIG_M17
 const uint8_t settings_m17_num = sizeof(settings_m17_items)/sizeof(settings_m17_items[0]);
+#if defined(CONFIG_P25)
+const uint8_t p25_num = sizeof(p25_items)/sizeof(p25_items[0]);
+#endif
 #endif
 const uint8_t settings_fm_num = sizeof(settings_fm_items) / sizeof(settings_fm_items[0]);
 const uint8_t settings_accessibility_num = sizeof(settings_accessibility_items)/sizeof(settings_accessibility_items[0]);
@@ -997,6 +1035,10 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
             if(state.channel.mode == OPMODE_FM)
                 state.channel.mode = OPMODE_M17;
             else if(state.channel.mode == OPMODE_M17)
+                #ifdef CONFIG_P25
+                state.channel.mode = OPMODE_P25;
+                else if(state.channel.mode == OPMODE_P25)
+                #endif
                 state.channel.mode = OPMODE_FM;
             else //catch any invalid states so they don't get locked out
             #endif
@@ -1178,6 +1220,26 @@ static void _ui_textInputKeypad(char *buf, uint8_t max_len, kbd_msg_t msg,
 static void _ui_textInputConfirm(char *buf)
 {
     buf[ui_state.input_position + 1] = '\0';
+}
+
+static void _ui_textInputNumber(char *buf, uint8_t max_len, kbd_msg_t msg)
+{
+    // input_getPressedChar() returns the key index 0-9, which is the
+    // digit itself - the E.161 symbol map mixes letters around the
+    // digit, so index into it would be wrong.
+    uint8_t num_key = input_getPressedChar(msg);
+    if (num_key > 9U)
+        return;
+
+    if (ui_state.input_position >= (max_len - 1))
+        return;
+
+    buf[ui_state.input_position] = '0' + num_key;
+    ui_state.input_position += 1;
+    buf[ui_state.input_position] = '\0';
+    ui_state.last_keypress = getTick();
+    ui_state.input_number = num_key;
+    ui_state.input_set = 0;
 }
 
 static void _ui_textInputDel(char *buf)
@@ -1970,6 +2032,11 @@ void ui_updateFSM(bool *sync_rtx)
                             state.ui_screen = SETTINGS_M17;
                             break;
 #endif
+#if defined(CONFIG_P25)
+                        case S_P25:
+                            state.ui_screen = SETTINGS_P25;
+                            break;
+#endif
                         case S_FM:
                             state.ui_screen = SETTINGS_FM;
                             break;
@@ -2450,6 +2517,124 @@ void ui_updateFSM(bool *sync_rtx)
                 }
                 break;
 #endif
+#if defined(CONFIG_P25)
+            case SETTINGS_P25:
+                if(ui_state.edit_srcid)
+                {
+                    if(msg.keys & KEY_ENTER)
+                    {
+                        _ui_textInputConfirm(ui_state.new_callsign);
+                        state.settings.p25_srcId = atoi(ui_state.new_callsign);
+                        ui_state.edit_srcid = false;
+                        *sync_rtx = true;
+                    }
+                    else if(msg.keys & KEY_ESC)
+                        ui_state.edit_srcid = false;
+                    else if(input_isCharPressed(msg))
+                        _ui_textInputNumber(ui_state.new_callsign, 9, msg);
+                    else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
+                            msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
+                        _ui_textInputDel(ui_state.new_callsign);
+                }
+                else if(ui_state.edit_dstid)
+                {
+                    if(msg.keys & KEY_ENTER)
+                    {
+                        _ui_textInputConfirm(ui_state.new_callsign);
+                        state.settings.p25_dstId = atoi(ui_state.new_callsign);
+                        ui_state.edit_dstid = false;
+                        *sync_rtx = true;
+                    }
+                    else if(msg.keys & KEY_ESC)
+                        ui_state.edit_dstid = false;
+                    else if(input_isCharPressed(msg))
+                        _ui_textInputNumber(ui_state.new_callsign, 7, msg);
+                    else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
+                            msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
+                        _ui_textInputDel(ui_state.new_callsign);
+                }
+                else if(ui_state.edit_nac)
+                {
+                    if(msg.keys & KEY_ENTER)
+                    {
+                        _ui_textInputConfirm(ui_state.new_callsign);
+                        state.settings.p25_nac = strtol(ui_state.new_callsign, NULL, 16);
+                        ui_state.edit_nac = false;
+                        *sync_rtx = true;
+                    }
+                    else if(msg.keys & KEY_ESC)
+                        ui_state.edit_nac = false;
+                    else if(input_isCharPressed(msg))
+                        _ui_textInputNumber(ui_state.new_callsign, 4, msg);
+                    else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
+                            msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
+                        _ui_textInputDel(ui_state.new_callsign);
+                }
+                else if(ui_state.edit_rx_level)
+                {
+                    if(msg.keys & KEY_ENTER)
+                        ui_state.edit_rx_level = false;
+                    if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
+                        _ui_changeBBLevel(&state.settings.p25_rx_level, -1);
+                    if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
+                        _ui_changeBBLevel(&state.settings.p25_rx_level, +1);
+                    *sync_rtx = true;
+                }
+                else if(ui_state.edit_tx_level)
+                {
+                    if(msg.keys & KEY_ENTER)
+                        ui_state.edit_tx_level = false;
+                    if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
+                        _ui_changeBBLevel(&state.settings.p25_tx_level, -1);
+                    if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
+                        _ui_changeBBLevel(&state.settings.p25_tx_level, +1);
+                    *sync_rtx = true;
+                }
+                else if(msg.keys & KEY_ENTER)
+                {
+                    switch(ui_state.menu_selected)
+                    {
+                        case M_SRCID:
+                            ui_state.edit_srcid = true;
+                            _ui_textInputReset(ui_state.new_callsign, sizeof(ui_state.new_callsign));
+                            break;
+                        case M_DSTID:
+                            ui_state.edit_dstid = true;
+                            _ui_textInputReset(ui_state.new_callsign, sizeof(ui_state.new_callsign));
+                            break;
+                        case M_NAC:
+                            ui_state.edit_nac = true;
+                            _ui_textInputReset(ui_state.new_callsign, sizeof(ui_state.new_callsign));
+                            break;
+                        case M_P25RXLEVEL:
+                            ui_state.edit_rx_level = true;
+                            break;
+                        case M_P25TXLEVEL:
+                            ui_state.edit_tx_level = true;
+                            break;
+                        case M_RXINVERT:
+                            state.settings.p25_rx_invert = !state.settings.p25_rx_invert;
+                            *sync_rtx = true;
+                            break;
+                        case M_TXINVERT:
+                            state.settings.p25_tx_invert = !state.settings.p25_tx_invert;
+                            *sync_rtx = true;
+                            break;
+                        default:
+                            state.ui_screen = SETTINGS_P25;
+                    }
+                }
+                else if(msg.keys & KEY_UP || msg.keys & KNOB_LEFT)
+                    _ui_menuUp(p25_num);
+                else if(msg.keys & KEY_DOWN || msg.keys & KNOB_RIGHT)
+                    _ui_menuDown(p25_num);
+                else if(msg.keys & KEY_ESC)
+                {
+                    *sync_rtx = true;
+                    _ui_menuBack(MENU_SETTINGS);
+                }
+                break;
+#endif
             case SETTINGS_FM:
                 if (ui_state.edit_mode)
                 {
@@ -2500,10 +2685,6 @@ void ui_updateFSM(bool *sync_rtx)
                     _ui_menuUp(settings_fm_num);
                 else if (msg.keys & KEY_DOWN || msg.keys & KNOB_RIGHT)
                     _ui_menuDown(settings_fm_num);
-                else if (msg.keys & KEY_ENTER)
-                    ui_state.edit_mode = !ui_state.edit_mode;
-                else if (msg.keys & KEY_ESC)
-                    _ui_menuBack(MENU_SETTINGS);
                 else if (msg.keys & KEY_ENTER)
                     ui_state.edit_mode = !ui_state.edit_mode;
                 else if (msg.keys & KEY_ESC)
@@ -2733,6 +2914,11 @@ bool ui_updateGUI()
         // M17 settings screen
         case SETTINGS_M17:
             _ui_drawSettingsM17(&ui_state);
+            break;
+#endif
+#if defined(CONFIG_P25)
+        case SETTINGS_P25:
+            _ui_drawSettingsP25(&ui_state);
             break;
 #endif
         // FM settings screen

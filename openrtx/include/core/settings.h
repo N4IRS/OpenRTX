@@ -51,6 +51,15 @@ typedef struct
     bool    showBatteryIcon;      // Battery display true: icon, false: percentage
     bool    gpsSetTime;           // Use GPS to ajust RTC time
     char    M17_meta_text[53];    // M17 Meta Text to send
+#ifdef CONFIG_P25
+    uint8_t  p25_rx_level;        // P25 RX BB level
+    uint8_t  p25_tx_level;        // P25 TX BB level
+    uint32_t p25_srcId;           // P25 Source ID (DMR ID)
+    uint32_t p25_dstId;           // P25 Destination ID (DMR ID or TG)
+    uint16_t p25_nac;             // P25 NAC
+    uint8_t  p25_rx_invert  : 1,  // P25 RX signal invert
+             p25_tx_invert  : 1;  // P25 TX signal invert
+#endif
 }
 __attribute__((packed)) settings_t;
 
@@ -78,7 +87,16 @@ static const settings_t default_settings =
     "",                           // Empty M17 destination
     false,                        // Display battery icon
     false,                        // Update RTC with GPS
-    "OpenRTX",                    // Default M17 meta text
+    "OpenRTX"                     // Default M17 meta text
+#ifdef CONFIG_P25
+  ,100                          // Default P25 RX BB level
+  ,180                          // Default P25 TX BB level (0.95x spec deviation)
+  ,0                            // Empty P25 Source ID
+  ,0                            // Empty P25 Destination ID
+  ,293                          // Default P25 NAC
+  ,1                            // P25 RX invert
+  ,0                            // P25 TX invert
+#endif
 };
 
 #endif /* SETTINGS_H */

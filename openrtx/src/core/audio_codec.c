@@ -41,6 +41,7 @@ static bool running;
 static bool reqStop;
 static pthread_t codecThread;
 static pthread_attr_t codecAttr;
+static void *codecStack = NULL;
 static pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t wakeup_cond = PTHREAD_COND_INITIALIZER;
@@ -390,9 +391,8 @@ static bool startThread(const pathId path, void *(*func)(void *))
     pthread_attr_setschedparam(&codecAttr, &param);
 #elif defined(__ZEPHYR__)
     // Allocate and set the stack for CODEC2 thread
-    void *codec_thread_stack = malloc(CODEC2_THREAD_STKSIZE * sizeof(uint8_t));
-    pthread_attr_setstack(&codecAttr, codec_thread_stack,
-                          CODEC2_THREAD_STKSIZE);
+    codecStack = malloc(CODEC2_THREAD_STKSIZE * sizeof(uint8_t));
+    pthread_attr_setstack(&codecAttr, codecStack, CODEC2_THREAD_STKSIZE);
 #endif
 
     // Start thread
@@ -410,10 +410,9 @@ static void stopThread()
     running = false;
 
 #ifdef __ZEPHYR__
-    void *addr;
-    size_t size;
-
-    pthread_attr_getstack(&codecAttr, &addr, &size);
-    free(addr);
+    if (codecStack != NULL) {
+        free(codecStack);
+        codecStack = NULL;
+    }
 #endif
 }

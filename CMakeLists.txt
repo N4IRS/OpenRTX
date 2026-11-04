@@ -62,6 +62,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(openrtx)
 
 execute_process(COMMAND git describe --tags --dirty --always
+                WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
                 OUTPUT_VARIABLE GIT_VER_ID
                 ERROR_QUIET
                 OUTPUT_STRIP_TRAILING_WHITESPACE)

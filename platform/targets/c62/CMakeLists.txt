@@ -26,6 +26,48 @@ target_sources(app
     ${OPENRTX_ROOT}/platform/targets/c62/calib_C62.c
     ${OPENRTX_ROOT}/platform/drivers/stubs/cps_io_stub.c
 
+    ${OPENRTX_ROOT}/openrtx/src/core/imbe_audio_codec.cpp
+    ${OPENRTX_ROOT}/openrtx/src/rtx/OpMode_P25.cpp
+
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/AMBEFEC.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/BCH.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/Golay24128.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/Hamming.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25Data.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25LowSpeedData.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25NID.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25RX.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25TX.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25Utils.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25_Audio.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25_IO.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/RS241213.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/arm_math.c
+
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/aux_sub.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/basicop2.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/ch_decode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/ch_encode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/dc_rmv.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/decode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/dsp_sub.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/encode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/imbe2_api.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/imbe_vocoder.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/math_sub.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/pe_lpf.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/pitch_est.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/pitch_ref.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/qnt_sub.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/rand_gen.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/sa_decode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/sa_encode.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/sa_enh.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/tbls.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/uv_synt.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/v_synt.cc
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/v_uv_det.cc
+
     ${OPENRTX_ROOT}/platform/drivers/display/display_c62.c
     ${OPENRTX_ROOT}/platform/drivers/baseband/radio_C62.cpp
     ${OPENRTX_ROOT}/platform/drivers/keyboard/keyboard_c62.c
@@ -44,6 +86,12 @@ zephyr_linker_sources(DATA_SECTIONS lsf_service.ld)
 
 target_include_directories(app
   PRIVATE
+    ${OPENRTX_ROOT}/openrtx/include
+    ${OPENRTX_ROOT}/openrtx/include/core
+    ${OPENRTX_ROOT}/openrtx/include/protocols
+    ${OPENRTX_ROOT}/openrtx/include/protocols/P25
+    ${OPENRTX_ROOT}/openrtx/include/protocols/P25/vendor
+    ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder
     ${OPENRTX_ROOT}/platform/targets/c62
 )
 

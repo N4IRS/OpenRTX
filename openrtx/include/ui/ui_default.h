@@ -49,6 +49,9 @@ enum uiScreen
     SETTINGS_GPS,
     SETTINGS_RADIO,
     SETTINGS_M17,
+#if defined(CONFIG_P25)
+    SETTINGS_P25,
+#endif
     SETTINGS_FM,
     SETTINGS_ACCESSIBILITY,
     SETTINGS_RESET2DEFAULTS,
@@ -88,6 +91,9 @@ enum settingsItems
     S_RADIO,
 #ifdef CONFIG_M17
     S_M17,
+#endif
+#if defined(CONFIG_P25)
+    S_P25,
 #endif
     S_FM,
     S_ACCESSIBILITY,
@@ -150,6 +156,19 @@ enum settingsFMItems
     CTCSS_Tone,
     CTCSS_Enabled
 };
+
+#ifdef CONFIG_P25
+enum p25Items
+{
+    M_SRCID = 0,
+    M_DSTID,
+    M_NAC,
+    M_P25RXLEVEL,
+    M_P25TXLEVEL,
+    M_RXINVERT,
+    M_TXINVERT
+};
+#endif
 
 /**
  * Struct containing a set of positions and sizes that get
@@ -221,6 +240,15 @@ typedef struct ui_state_t
     long long m17_meta_text_last_scroll_tick;
     char new_meta_text[53];
     bool edit_meta_text;
+#if defined(CONFIG_P25)
+    bool edit_srcid;
+    bool edit_dstid;
+    bool edit_nac;
+    bool edit_rx_level;
+    bool edit_tx_level;
+    bool edit_invert;
+    char new_p25_buf[16];
+#endif
 #ifdef CONFIG_RTC
     // Variables used for Time & Date input
     datetime_t new_timedate;
@@ -247,6 +275,9 @@ extern const char *settings_gps_items[];
 extern const char *settings_radio_items[];
 extern const char *settings_m17_items[];
 extern const char *settings_fm_items[];
+#if defined(CONFIG_P25)
+extern const char *p25_items[];
+#endif
 extern const char * settings_accessibility_items[];
 extern const char *backup_restore_items[];
 extern const char *info_items[];
@@ -258,6 +289,9 @@ extern const uint8_t settings_gps_num;
 extern const uint8_t settings_radio_num;
 extern const uint8_t settings_m17_num;
 extern const uint8_t settings_fm_num;
+#if defined(CONFIG_P25)
+extern const uint8_t p25_num;
+#endif
 extern const uint8_t settings_accessibility_num;
 extern const uint8_t backup_restore_num;
 extern const uint8_t info_num;

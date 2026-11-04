@@ -38,7 +38,7 @@ static constexpr uint16_t M17_RX_FILTER =
     BK4819_REG43_RF_BW(7) | BK4819_REG43_RF_BW_WEAK(4) | BK4819_REG43_UNDOC3;
 static constexpr uint8_t M17_AF_RX_GAIN1 = 1; // -6 dB
 static constexpr uint8_t M17_AF_RX_GAIN2 = 0x3f;
-static constexpr uint8_t M17_MIC_GAIN = 0;
+static constexpr uint8_t M17_MIC_GAIN = BK4819_DEFAULT_MIC_GAIN;
 
 static struct C62Calib calData; // TX power calibration
 
@@ -130,7 +130,13 @@ void radio_setOpmode(const enum opmode mode)
         bk4819_setRxFilter(&c62_bk4819, M17_RX_FILTER);
         bk4819_SetFilterBandwidth(&c62_bk4819, 0);
         bk4819_setMicGain(&c62_bk4819, M17_MIC_GAIN);
-    } else if (radioMode == OPMODE_M17) {
+    } else if (mode == OPMODE_P25) {
+        bk4819_setAudioMode(&c62_bk4819, BK4819_AUDIO_BYPASS);
+        bk4819_setTxDeviation(&c62_bk4819, true, M17_TX_DEVIATION);
+        bk4819_setRxFilter(&c62_bk4819, BK4819_DEFAULT_RX_FILTER);
+        bk4819_SetFilterBandwidth(&c62_bk4819, 0);
+        bk4819_setMicGain(&c62_bk4819, M17_MIC_GAIN);
+    } else if (radioMode == OPMODE_M17 || radioMode == OPMODE_P25) {
         bk4819_setAudioMode(&c62_bk4819, BK4819_AUDIO_VOICE);
     }
 
@@ -144,7 +150,7 @@ bool radio_checkRxDigitalSquelch()
 
 void radio_enableAfOutput()
 {
-    if (radioMode == OPMODE_M17)
+    if (radioMode == OPMODE_M17 || radioMode == OPMODE_P25)
         BK4819_SetAF(&c62_bk4819, BK4819_AF_TYPE_BYPASS);
     else
         BK4819_SetAF(&c62_bk4819, BK4819_AF_TYPE_FM);
@@ -174,7 +180,7 @@ void radio_enableRx()
 
     bk4819_set_freq(&c62_bk4819, config->rxFrequency);
 
-    if (radioMode == OPMODE_M17) {
+    if (radioMode == OPMODE_M17 || radioMode == OPMODE_P25) {
         bk4819_setAfRxGain(&c62_bk4819, M17_AF_RX_GAIN1, M17_AF_RX_GAIN2);
         bk4819_setAgcFixed(&c62_bk4819, false);
     } else {
@@ -206,7 +212,7 @@ void radio_enableTx()
 
     bk4819_set_freq(&c62_bk4819, config->txFrequency);
 
-    if (radioMode == OPMODE_M17) {
+    if (radioMode == OPMODE_M17 || radioMode == OPMODE_P25) {
         bk4819_setAfRxGain(&c62_bk4819, M17_AF_RX_GAIN1,
                            BK4819_DEFAULT_AF_RX_GAIN2);
         bk4819_setAgcFixed(&c62_bk4819, true);

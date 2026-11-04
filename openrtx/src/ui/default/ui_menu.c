@@ -450,6 +450,52 @@ int _ui_getM17ValueName(char *buf, uint8_t max_len, uint8_t index)
 }
 #endif
 
+#if defined(CONFIG_P25)
+int _ui_getP25EntryName(char *buf, uint8_t max_len, uint8_t index)
+{
+    if(index >= p25_num) return -1;
+    sniprintf(buf, max_len, "%s", p25_items[index]);
+    return 0;
+}
+
+int _ui_getP25ValueName(char *buf, uint8_t max_len, uint8_t index)
+{
+    if(index >= p25_num)
+        return -1;
+
+    switch(index)
+    {
+        case M_SRCID:
+            sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_srcId);
+            break;
+        case M_DSTID:
+            sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_dstId);
+            break;
+        case M_NAC:
+            sniprintf(buf, max_len, "0x%03X", (int)last_state.settings.p25_nac);
+            break;
+        case M_P25RXLEVEL:
+            sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_rx_level);
+            break;
+        case M_P25TXLEVEL:
+            sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_tx_level);
+            break;
+        case M_RXINVERT:
+            sniprintf(buf, max_len, "%s", (last_state.settings.p25_rx_invert) ?
+                                                           currentLanguage->on :
+                                                           currentLanguage->off);
+            break;
+        case M_TXINVERT:
+            sniprintf(buf, max_len, "%s", (last_state.settings.p25_tx_invert) ?
+                                                           currentLanguage->on :
+                                                           currentLanguage->off);
+            break;
+    }
+
+    return 0;
+}
+#endif
+
 int _ui_getFMEntryName(char* buf, uint8_t max_len, uint8_t index)
 {
     if (index >= settings_fm_num)
@@ -1045,6 +1091,41 @@ void _ui_drawSettingsM17(ui_state_t* ui_state)
 }
 #endif
 
+#if defined(CONFIG_P25)
+void _ui_drawSettingsP25(ui_state_t* ui_state)
+{
+    gfx_clearScreen();
+    // Print "P25 Settings" on top bar
+    gfx_print(layout.top_pos, layout.top_font, TEXT_ALIGN_CENTER,
+              color_white, "P25 Settings");
+
+    if(ui_state->edit_srcid || ui_state->edit_dstid || ui_state->edit_nac ||
+       ui_state->edit_rx_level || ui_state->edit_tx_level)
+    {
+        const char *label = "";
+        if(ui_state->edit_srcid) label = "DMR Id:";
+        else if(ui_state->edit_dstid) label = "Dst Id:";
+        else if(ui_state->edit_nac) label = "NAC:";
+        else if(ui_state->edit_rx_level) label = "RX Level:";
+        else if(ui_state->edit_tx_level) label = "TX Level:";
+
+        gfx_printLine(1, 4, layout.top_h, CONFIG_SCREEN_HEIGHT - layout.bottom_h,
+                      layout.horizontal_pad, layout.menu_font,
+                      TEXT_ALIGN_LEFT, color_white, label);
+
+        // Print value being typed
+        gfx_printLine(1, 1, layout.top_h, CONFIG_SCREEN_HEIGHT - layout.bottom_h,
+                      layout.horizontal_pad, layout.input_font,
+                      TEXT_ALIGN_CENTER, color_white, ui_state->new_callsign);
+    }
+    else
+    {
+        _ui_drawMenuListValue(ui_state, ui_state->menu_selected, _ui_getP25EntryName,
+                              _ui_getP25ValueName);
+    }
+}
+#endif
+
 void _ui_drawSettingsFM(ui_state_t* ui_state)
 {
     gfx_clearScreen();
@@ -1290,6 +1371,11 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
 #ifdef CONFIG_M17
         case OPMODE_M17:
             gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
+            break;
+#endif
+#ifdef CONFIG_P25
+        case OPMODE_P25:
+            gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          P25");
             break;
 #endif
     }

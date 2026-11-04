@@ -10,6 +10,9 @@
 #include "rtx/rtx.h"
 #include "rtx/OpMode_FM.hpp"
 #include "rtx/OpMode_M17.hpp"
+#if defined(CONFIG_P25)
+#include "rtx/OpMode_P25.hpp"
+#endif
 
 static pthread_mutex_t   *cfgMutex;     // Mutex for incoming config messages
 static const rtxStatus_t *newCnf;       // Pointer for incoming config messages
@@ -22,6 +25,9 @@ static OpMode     noMode;               // Empty opMode handler for opmode::NONE
 static OpMode_FM  fmMode;               // FM mode handler
 #ifdef CONFIG_M17
 static OpMode_M17 m17Mode;              // M17 mode handler
+#endif
+#ifdef CONFIG_P25
+static OpMode_P25 p25Mode;             // P25 mode handler
 #endif
 
 
@@ -53,6 +59,10 @@ void rtx_init(pthread_mutex_t *m)
     rtxStatus.M17_link[0]   = '\0';
     rtxStatus.M17_refl[0]   = '\0';
     rtxStatus.M17_meta_text[0] = '\0';
+#ifdef CONFIG_P25
+    rtxStatus.P25_SrcId        = 0;
+    rtxStatus.P25_DstId        = 0;
+#endif
     currMode = &noMode;
 
     /*
@@ -144,6 +154,9 @@ void rtx_task()
                 case OPMODE_FM:   currMode = &fmMode;  break;
                 #ifdef CONFIG_M17
                 case OPMODE_M17:  currMode = &m17Mode; break;
+                #endif
+                #ifdef CONFIG_P25
+                case OPMODE_P25:  currMode = &p25Mode; break;
                 #endif
                 default:   currMode = &noMode;
             }

@@ -214,6 +214,32 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
             break;
         }
         #endif
+        #ifdef CONFIG_P25
+        case OPMODE_P25:
+        {
+            // Print P25 Source/Destination IDs
+            rtxStatus_t rtxStatus = rtx_getCurrentStatus();
+
+            if(rtxStatus.lsfOk)
+            {
+                gfx_drawSymbol(layout.line2_pos, layout.line2_symbol_size, TEXT_ALIGN_LEFT,
+                               color_white, SYMBOL_CALL_RECEIVED);
+                gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
+                          color_white, "%d", rtxStatus.P25_DstId);
+
+                gfx_drawSymbol(layout.line1_pos, layout.line1_symbol_size, TEXT_ALIGN_LEFT,
+                               color_white, SYMBOL_CALL_MADE);
+                gfx_print(layout.line1_pos, layout.line2_font, TEXT_ALIGN_CENTER,
+                          color_white, "%d", rtxStatus.P25_SrcId);
+            }
+            else
+            {
+                gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
+                          color_white, "P25 NOLOCK");
+            }
+            break;
+        }
+        #endif
     }
 }
 
@@ -341,6 +367,17 @@ void _ui_drawMainBottom()
             break;
         #ifdef CONFIG_M17
         case OPMODE_M17:
+            gfx_drawSmeterLevel(meter_pos,
+                                meter_width,
+                                meter_height,
+                                rssi,
+                                mic_level,
+                                volume,
+                                true);
+            break;
+        #endif
+        #ifdef CONFIG_P25
+        case OPMODE_P25:
             gfx_drawSmeterLevel(meter_pos,
                                 meter_width,
                                 meter_height,

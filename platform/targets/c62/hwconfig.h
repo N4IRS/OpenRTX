@@ -38,6 +38,7 @@ extern "C" {
 #define CONFIG_BAT_NCELLS 2
 
 #define CONFIG_M17
+#define CONFIG_P25
 
 /* Microphone audio input, set for C62_ADC_MIC_GAIN_D below */
 #define CONFIG_MIC_GAIN 13
