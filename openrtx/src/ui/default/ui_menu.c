@@ -1113,10 +1113,29 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
                       layout.horizontal_pad, layout.menu_font,
                       TEXT_ALIGN_LEFT, color_white, label);
 
-        // Print value being typed
+        // Print value being typed. The baseband levels start from an empty
+        // buffer: show the stored value until the first digit or step, so the
+        // current level is always visible while editing.
+        const char *value = ui_state->new_callsign;
+        char level_buf[8];
+
+        if(ui_state->edit_rx_level || ui_state->edit_tx_level)
+        {
+            if(ui_state->new_p25_buf[0] == '\0' || ui_state->new_p25_buf[0] == '_')
+                sniprintf(level_buf, sizeof(level_buf), "%u",
+                          (unsigned int)(ui_state->edit_rx_level ?
+                                         last_state.settings.p25_rx_level :
+                                         last_state.settings.p25_tx_level));
+            else
+                sniprintf(level_buf, sizeof(level_buf), "%s",
+                          ui_state->new_p25_buf);
+
+            value = level_buf;
+        }
+
         gfx_printLine(1, 1, layout.top_h, CONFIG_SCREEN_HEIGHT - layout.bottom_h,
                       layout.horizontal_pad, layout.input_font,
-                      TEXT_ALIGN_CENTER, color_white, ui_state->new_callsign);
+                      TEXT_ALIGN_CENTER, color_white, value);
     }
     else
     {

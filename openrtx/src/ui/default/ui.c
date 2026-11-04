@@ -53,21 +53,6 @@
 #include <math.h>
 #include "ui/ui_default.h"
 
-#if defined(CONFIG_P25)
-static void _ui_changeBBLevel(uint8_t *level, int variation)
-{
-    uint16_t value = *level;
-    value         += variation;
-
-    if(value > 255)
-        value = 1;
-
-    if(value < 1)
-        value = 255;
-
-    *level = value;
-}
-#endif
 #include "rtx/rtx.h"
 #include "interfaces/platform.h"
 #include "interfaces/display.h"
@@ -201,7 +186,7 @@ const char * p25_items[] =
 {
     "DMR Id",
     "Dst Id",
-    "NAC (dec)",
+    "NAC (hex)",
     "RX Level",
     "TX Level",
     "RX Invert",
@@ -320,6 +305,58 @@ static ui_state_t ui_state;
 static bool macro_menu = false;
 static bool layout_ready = false;
 static bool redraw_needed = true;
+
+#if defined(CONFIG_P25)
+#define P25_BB_LEVEL_MIN 1U
+#define P25_BB_LEVEL_MAX 255U
+
+/**
+ * \internal
+ * Step the P25 baseband level held in the edit buffer, clamping it to the
+ * valid range. An empty buffer means "unchanged", so the step starts from the
+ * value currently stored in the settings.
+ */
+static void _ui_changeBBLevel(char *buf, size_t len, uint8_t current,
+                              int variation)
+{
+    uint16_t value = current;
+
+    if(buf[0] != '\0' && buf[0] != '_')
+        value = (uint16_t) atoi(buf);
+
+    value += variation;
+
+    if(value > P25_BB_LEVEL_MAX)
+        value = P25_BB_LEVEL_MAX;
+
+    if(value < P25_BB_LEVEL_MIN)
+        value = P25_BB_LEVEL_MIN;
+
+    sniprintf(buf, len, "%u", (unsigned int) value);
+    ui_state.input_position = (uint8_t) strlen(buf);
+}
+
+/**
+ * \internal
+ * Return the P25 baseband level held in the edit buffer, clamped to the valid
+ * range. An empty buffer means "unchanged", so the stored value is returned.
+ */
+static uint8_t _ui_p25BBLevel(const char *buf, uint8_t current)
+{
+    uint16_t value = current;
+
+    if(buf[0] != '\0' && buf[0] != '_')
+        value = (uint16_t) atoi(buf);
+
+    if(value > P25_BB_LEVEL_MAX)
+        value = P25_BB_LEVEL_MAX;
+
+    if(value < P25_BB_LEVEL_MIN)
+        value = P25_BB_LEVEL_MIN;
+
+    return (uint8_t) value;
+}
+#endif
 
 static bool standby = false;
 static long long last_event_tick = 0;
@@ -2573,22 +2610,48 @@ void ui_updateFSM(bool *sync_rtx)
                 else if(ui_state.edit_rx_level)
                 {
                     if(msg.keys & KEY_ENTER)
+                    {
+                        state.settings.p25_rx_level =
+                            _ui_p25BBLevel(ui_state.new_p25_buf,
+                                           state.settings.p25_rx_level);
                         ui_state.edit_rx_level = false;
-                    if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
-                        _ui_changeBBLevel(&state.settings.p25_rx_level, -1);
-                    if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
-                        _ui_changeBBLevel(&state.settings.p25_rx_level, +1);
-                    *sync_rtx = true;
+                        *sync_rtx = true;
+                    }
+                    else if(msg.keys & KEY_ESC)
+                        ui_state.edit_rx_level = false;
+                    else if(input_isNumberPressed(msg))
+                        _ui_textInputNumber(ui_state.new_p25_buf, 4, msg);
+                    else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
+                        _ui_changeBBLevel(ui_state.new_p25_buf,
+                                          sizeof(ui_state.new_p25_buf),
+                                          state.settings.p25_rx_level, -1);
+                    else if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
+                        _ui_changeBBLevel(ui_state.new_p25_buf,
+                                          sizeof(ui_state.new_p25_buf),
+                                          state.settings.p25_rx_level, +1);
                 }
                 else if(ui_state.edit_tx_level)
                 {
                     if(msg.keys & KEY_ENTER)
+                    {
+                        state.settings.p25_tx_level =
+                            _ui_p25BBLevel(ui_state.new_p25_buf,
+                                           state.settings.p25_tx_level);
                         ui_state.edit_tx_level = false;
-                    if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
-                        _ui_changeBBLevel(&state.settings.p25_tx_level, -1);
-                    if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
-                        _ui_changeBBLevel(&state.settings.p25_tx_level, +1);
-                    *sync_rtx = true;
+                        *sync_rtx = true;
+                    }
+                    else if(msg.keys & KEY_ESC)
+                        ui_state.edit_tx_level = false;
+                    else if(input_isNumberPressed(msg))
+                        _ui_textInputNumber(ui_state.new_p25_buf, 4, msg);
+                    else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
+                        _ui_changeBBLevel(ui_state.new_p25_buf,
+                                          sizeof(ui_state.new_p25_buf),
+                                          state.settings.p25_tx_level, -1);
+                    else if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
+                        _ui_changeBBLevel(ui_state.new_p25_buf,
+                                          sizeof(ui_state.new_p25_buf),
+                                          state.settings.p25_tx_level, +1);
                 }
                 else if(msg.keys & KEY_ENTER)
                 {
@@ -2607,9 +2670,13 @@ void ui_updateFSM(bool *sync_rtx)
                             _ui_textInputReset(ui_state.new_callsign, sizeof(ui_state.new_callsign));
                             break;
                         case M_P25RXLEVEL:
+                            _ui_textInputReset(ui_state.new_p25_buf,
+                                               sizeof(ui_state.new_p25_buf));
                             ui_state.edit_rx_level = true;
                             break;
                         case M_P25TXLEVEL:
+                            _ui_textInputReset(ui_state.new_p25_buf,
+                                               sizeof(ui_state.new_p25_buf));
                             ui_state.edit_tx_level = true;
                             break;
                         case M_RXINVERT:
