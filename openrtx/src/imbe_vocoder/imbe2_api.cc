@@ -15,6 +15,16 @@ struct imbe2
     imbe_decoder dec;
 };
 
+/*
+ * imbe_vocoder_api.h (the fixed-buffer adapter used by the firmware)
+ * reserves 8704 bytes for the encoder and 2048 for the decoder.  These
+ * asserts keep that hand-sized storage honest if the engine grows.
+ */
+static_assert(sizeof(imbe_encoder) <= 8704,
+              "encoder state no longer fits imbe_vocoder_api.h buffer");
+static_assert(sizeof(imbe_decoder) <= 2048,
+              "decoder state no longer fits imbe_vocoder_api.h buffer");
+
 size_t imbe2_state_size(void)
 {
     return sizeof(imbe2_t);

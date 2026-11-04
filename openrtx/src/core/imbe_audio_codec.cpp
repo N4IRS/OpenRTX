@@ -48,6 +48,23 @@ static void *codecStack = NULL;
 static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int16_t decodeTable[256];
 
+/*
+ * Multiply an audio sample by a gain with saturation.  On speech peaks the
+ * plain int16 products used before this helper overflowed and wrapped (sign
+ * inversion), which is audible as hard distortion.
+ */
+static inline int16_t scaleSample(int16_t sample, int gain)
+{
+    int32_t value = static_cast<int32_t>(sample) * gain;
+
+    if (value > 32767)
+        value = 32767;
+    else if (value < -32768)
+        value = -32768;
+
+    return static_cast<int16_t>(value);
+}
+
 #ifdef PLATFORM_MOD17
 //#include <drivers/USART3_MOD17.h> // used for debugging
 #include <drivers/usb_vcom.h>
@@ -55,9 +72,26 @@ static const uint8_t micGainPre = 4;
 static const uint8_t micGainPost = 3;
 #else
 #ifndef PLATFORM_LINUX
-static const uint8_t micGainPre = 8;
-static const uint8_t micGainPost = 4;
+/*
+ * Single microphone gain for the IMBE encoder.  The M17 codec path applies
+ * CONFIG_MIC_GAIN to the same ADC stream, so match it: that is the level the
+ * vocoder was designed for.  Deviation is set by the P25 TX Level control,
+ * not by overdriving the vocoder input.
+ */
+#ifndef CONFIG_MIC_GAIN
+#define CONFIG_MIC_GAIN 13
 #endif
+static const int micGain = CONFIG_MIC_GAIN;
+#endif
+
+/*
+ * The IMBE decoder already emits full-scale s16 speech: measured peaks on
+ * real frames sit around -3 dBFS, and the reference decoders (dvmhost,
+ * op25) feed the samples to the DAC at unity gain.  Keep this named and
+ * saturating so the level can be raised on air if the speaker path needs
+ * it, without ever wrapping.
+ */
+static const int rxGain = 1;
 #endif
 
 extern CRingBuffer<uint8_t> p25PacketBuffer;
@@ -230,14 +264,13 @@ static void *encodeFunc(void *arg)
 #ifndef PLATFORM_LINUX
         // Pre-amplification stage.  The ADC delivers samples with a DC
         // pedestal (raw 12-bit data, 0..4095): remove it before applying
-        // the mic gain, as the M17 codec path does.  Without this, the
-        // overall x32 gain leaves a large DC residual (only a pedestal of
-        // exactly 2048 cancels modulo 65536) that buries speech at the
-        // vocoder input, making the transmitted audio near-silent.
+        // the mic gain, as the M17 codec path does.  The gain is a single
+        // saturating multiply, so a pedestal residual can no longer wrap
+        // around int16 and bury speech at the vocoder input.
 #ifndef PLATFORM_MOD17
         for (size_t i = 0; i < audio.len; i++)
-            audio.data[i] = dsp_dcBlockFilter(&encDcBlock, audio.data[i])
-                          * micGainPre;
+            audio.data[i] = scaleSample(
+                dsp_dcBlockFilter(&encDcBlock, audio.data[i]), micGain);
 #else
         for (size_t i = 0; i < audio.len; i++)
             audio.data[i] *= micGainPre;
@@ -262,19 +295,14 @@ static void *encodeFunc(void *arg)
         }
 #else
         if (cRxBuffer != NULL && p25PacketBuffer.getSpace() >= 11) {
-            // Post-amplification stage
+            // Samples are already at the encoder's nominal level.
             for (size_t i = 0; i < audio.len; i++) {
-                cRxBuffer[byte_count++] = audio.data[i] * micGainPost;
+                cRxBuffer[byte_count++] = audio.data[i];
                 if (byte_count == 160) {
                     encodeIMBE(cRxBuffer, imbe);
                     for (size_t j = 0; j < 11; j++)
                         p25PacketBuffer.put(imbe[j]);
                     byte_count = 0;
-                    static unsigned int encFrames = 0;
-                    if ((++encFrames % 50) == 0)
-                        printk("IMBE encode: t=%d frames=%u pending=%u\n",
-                               (int)(k_uptime_get() / 1000), encFrames,
-                               p25PacketBuffer.getData());
                 }
             }
             byte_count = 0;
@@ -381,14 +409,8 @@ static void *decodeFunc(void *arg)
 #ifdef PLATFORM_MOD17
                 pcm[i] *= 1.5F;
 #else
-                // Boost decoder output to match the M17 speaker level,
-                // which applies a x2 gain to the codec2 output.
-                int32_t amplified = pcm[i] * 32;
-                if (amplified > 32767)
-                    amplified = 32767;
-                if (amplified < -32768)
-                    amplified = -32768;
-                pcm[i] = static_cast<int16_t>(amplified);
+                // Unity by default; see the rxGain declaration above.
+                pcm[i] = scaleSample(pcm[i], rxGain);
 #endif
                 siAudioBuf[frame++] = pcm[i] & 0x00ff;
                 siAudioBuf[frame++] = (pcm[i] >> 8) & 0xff;
@@ -396,15 +418,6 @@ static void *decodeFunc(void *arg)
             memcpy(audioBuf, (uint8_t *)siAudioBuf, 320);
             newData = true;
             frame = 0;
-            static unsigned int dbgFrames = 0;
-            static int16_t runningMax = 0;
-            dbgFrames++;
-            for (int i = 0; i < 160; i++)
-                if (pcm[i] > runningMax || -pcm[i] > runningMax)
-                    runningMax = pcm[i] > 0 ? pcm[i] : -pcm[i];
-            if (dbgFrames % 50 == 0) {
-                printk("IMBE decode: frames=%u runningMaxPcm=%d\n", dbgFrames, runningMax);
-            }
         }
 #endif
         if (audioBuf == NULL)

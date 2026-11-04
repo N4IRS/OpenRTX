@@ -117,6 +117,24 @@ CRingBuffer<uint16_t> p25_rxBuffer(RX_RINGBUFFER_SIZE);
 extern CRingBuffer<uint8_t> p25PacketBuffer;
 extern CRingBuffer<uint8_t> p25LDUBuffer;
 
+/*
+ * Corrected bits per LDU above which the voice payload is considered lost.
+ * dvmhost uses the same default (124 of 1233 coded bits, ~10 %).  Below the
+ * threshold the FEC has recovered the frame; above it the regenerated IMBE
+ * words look plausible but are garbage, which the vocoder turns into a loud
+ * noise burst.
+ */
+static const unsigned int P25_VOICE_ERROR_THRESHOLD = 124U;
+
+/* Queue one LDU worth of silence.  P25_NULL_IMBE decodes to digital
+ * silence and is the same frame dvmhost substitutes in this situation. */
+static void pushNullAudio()
+{
+    for (int p = 0; p < 9; p++)
+        for (int i = 0; i < 11; i++)
+            p25PacketBuffer.put(P25_NULL_IMBE[i]);
+}
+
 static void *p25_dacStack = NULL; ///< Zephyr: stack backing the TX DAC thread
 
 std::unique_ptr<int16_t[]>
@@ -472,12 +490,7 @@ void P25_IO::decodeLDUAudio(unsigned char *buffer)
      * a frame with a valid NID arrives.
      */
     if (!m_lastNidValid) {
-        static const unsigned char silence[11] = { 0x04U, 0x0CU, 0xFDU, 0x7BU,
-                                                   0xFBU, 0x7DU, 0xF2U, 0x7BU,
-                                                   0x3DU, 0x9EU, 0x45U };
-        for (int p = 0; p < 9; p++)
-            for (int i = 0; i < 11; i++)
-                p25PacketBuffer.put(silence[i]);
+        pushNullAudio();
         return;
     }
 
@@ -494,7 +507,18 @@ void P25_IO::decodeLDUAudio(unsigned char *buffer)
     if (m_lastDUID == P25_DUID_LDU2)
         m_rfData.decodeLDU2(buffer);
 
-    m_audio.process(buffer);
+    unsigned int errors = m_audio.process(buffer);
+
+    /*
+     * If the FEC had to repair too much of this LDU the voice frames cannot
+     * be trusted.  Substitute null frames instead of synthesising noise, as
+     * dvmhost does above its silence threshold.
+     */
+    if (errors > P25_VOICE_ERROR_THRESHOLD) {
+        pushNullAudio();
+        return;
+    }
+
     unsigned char imbe[11] = { 0x04U, 0x0CU, 0xFDU, 0x7BU, 0xFBU, 0x7DU,
                                0xF2U, 0x7BU, 0x3DU, 0x9EU, 0x45U };
 
