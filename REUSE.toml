@@ -151,3 +151,39 @@ SPDX-FileCopyrightText = "Roger VK3KYY"
 path = "lib/QRCode/**/*"
 SPDX-License-Identifier = "MIT"
 SPDX-FileCopyrightText = "Richard Moore"
+
+# Documentation for this fork (C62 support, P25, CPS, ...).  Kept here instead
+# of HTML comments so the rendered Markdown stays clean and new pages are
+# covered automatically.
+[[annotations]]
+path = "docs/**/*.md"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+SPDX-FileCopyrightText = "OpenRTX Contributors"
+
+# P25 protocol layer, derived from Jonathan Naylor G4KLX's MMDVM code.  The
+# individual files keep their own copyright lines; this only records the
+# licence, which the source headers state in prose ("GPL v2 or later").
+[[annotations]]
+path = [
+    "openrtx/include/protocols/P25/**/*",
+    "openrtx/src/protocols/P25/**/*"
+]
+precedence = "aggregate"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# BCH.cpp is Robert Morelos-Zaragoza's bch3.c, which is NOT GPL: it is free for
+# non-commercial use only.  The exact notice is in LICENSES/.
+[[annotations]]
+path = "openrtx/src/protocols/P25/BCH.cpp"
+precedence = "override"
+SPDX-License-Identifier = "LicenseRef-BCH-NonCommercial"
+SPDX-FileCopyrightText = "1994-1997 Robert Morelos-Zaragoza"
+
+# IMBE vocoder engine, vendored from imostlylurk/imbe_embedded (Pavel Yazev's
+# fixed-point implementation, GPL-3.0-or-later, see LICENSE.imbe_embedded).
+# Recorded here so the vendored tree keeps its upstream headers and stays
+# diffable against its origin.
+[[annotations]]
+path = "openrtx/src/imbe_vocoder/**/*"
+precedence = "aggregate"
+SPDX-License-Identifier = "GPL-3.0-or-later"

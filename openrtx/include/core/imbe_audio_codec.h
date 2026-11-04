@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: Copyright 2022-2026 OpenRTX Contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /***************************************************************************
  *   Copyright (C) 2022 - 2023 by Federico Amedeo Izzo IU2NUO,             *
  *                                Niccolò Izzo IU2KIN                      *

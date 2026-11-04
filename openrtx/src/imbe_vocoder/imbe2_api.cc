@@ -1,3 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: Copyright 2020-2026 OpenRTX Contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * C API around the vendored IMBE-embedded engine; the engine itself is
+ * third-party code, see LICENSE.imbe_embedded in this directory.
+ */
+
 /* imbe2_api.cc: small C API over the split imbe engine. */
 
 #include <new>
