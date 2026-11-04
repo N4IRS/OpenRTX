@@ -273,6 +273,26 @@ static const char *symbols_ITU_T_E161_callsign[] =
     ""
 };
 
+/*
+ * Hexadecimal entry for the P25 NAC.  The first press of a key gives the
+ * digit, further presses cycle the letters that key carries on a phone
+ * keypad, so 2 = 2,A,B,C and 3 = 3,D,E,F and all 12-bit values can be typed
+ * from the numeric keypad.  Keys without letters keep entering their digit.
+ */
+static const char *symbols_hex[] =
+{
+    "0",
+    "1",
+    "2ABC",
+    "3DEF",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+};
+
 // Calculate number of menu entries
 const uint8_t menu_num = sizeof(menu_items)/sizeof(menu_items[0]);
 const uint8_t settings_num = sizeof(settings_items)/sizeof(settings_items[0]);
@@ -1277,6 +1297,41 @@ static void _ui_textInputNumber(char *buf, uint8_t max_len, kbd_msg_t msg)
     ui_state.last_keypress = getTick();
     ui_state.input_number = num_key;
     ui_state.input_set = 0;
+}
+
+static void _ui_textInputHex(char *buf, uint8_t max_len, kbd_msg_t msg)
+{
+    // Same multi-tap machine as the callsign editor, but restricted to the
+    // hexadecimal alphabet and to a single row of digits.
+    long long now = getTick();
+    uint8_t num_key = input_getPressedChar(msg);
+    if (num_key > 9U)
+        return;
+
+    uint8_t num_symbols = strlen(symbols_hex[num_key]);
+    bool key_timeout = ((now - ui_state.last_keypress) >= input_longPressTimeout);
+    bool same_key = (ui_state.input_number == num_key);
+    // max_len counts the terminator: the last usable index is max_len - 2.
+    uint8_t last = max_len - 2;
+
+    if (ui_state.last_keypress != 0)
+    {
+        if (same_key && !key_timeout)
+            ui_state.input_set = (ui_state.input_set + 1) % num_symbols;
+        else if (ui_state.input_position < last)
+        {
+            ui_state.input_position += 1;
+            ui_state.input_set = 0;
+        }
+        else
+            return;   // buffer full: delete a character before typing more
+    }
+
+    buf[ui_state.input_position] = symbols_hex[num_key][ui_state.input_set];
+    buf[ui_state.input_position + 1] = '\0';
+    vp_announceInputChar(buf[ui_state.input_position]);
+    ui_state.input_number = num_key;
+    ui_state.last_keypress = now;
 }
 
 static void _ui_textInputDel(char *buf)
@@ -2594,15 +2649,22 @@ void ui_updateFSM(bool *sync_rtx)
                 {
                     if(msg.keys & KEY_ENTER)
                     {
-                        _ui_textInputConfirm(ui_state.new_callsign);
-                        state.settings.p25_nac = strtol(ui_state.new_callsign, NULL, 16);
+                        // An empty field leaves the NAC unchanged instead of
+                        // being parsed as 0.
+                        if(ui_state.new_callsign[0] != '\0' &&
+                           ui_state.new_callsign[0] != '_')
+                        {
+                            _ui_textInputConfirm(ui_state.new_callsign);
+                            state.settings.p25_nac =
+                                strtol(ui_state.new_callsign, NULL, 16);
+                            *sync_rtx = true;
+                        }
                         ui_state.edit_nac = false;
-                        *sync_rtx = true;
                     }
                     else if(msg.keys & KEY_ESC)
                         ui_state.edit_nac = false;
                     else if(input_isCharPressed(msg))
-                        _ui_textInputNumber(ui_state.new_callsign, 4, msg);
+                        _ui_textInputHex(ui_state.new_callsign, 4, msg);
                     else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
                             msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
                         _ui_textInputDel(ui_state.new_callsign);

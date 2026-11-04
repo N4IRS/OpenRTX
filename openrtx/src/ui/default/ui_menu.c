@@ -1105,7 +1105,7 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
         const char *label = "";
         if(ui_state->edit_srcid) label = "DMR Id:";
         else if(ui_state->edit_dstid) label = "Dst Id:";
-        else if(ui_state->edit_nac) label = "NAC:";
+        else if(ui_state->edit_nac) label = "NAC (hex):";
         else if(ui_state->edit_rx_level) label = "RX Level:";
         else if(ui_state->edit_tx_level) label = "TX Level:";
 
@@ -1118,6 +1118,7 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
         // current level is always visible while editing.
         const char *value = ui_state->new_callsign;
         char level_buf[8];
+        char nac_buf[8];
 
         if(ui_state->edit_rx_level || ui_state->edit_tx_level)
         {
@@ -1131,6 +1132,20 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
                           ui_state->new_p25_buf);
 
             value = level_buf;
+        }
+        else if(ui_state->edit_nac)
+        {
+            // Show the stored NAC in hex until something is typed, so the
+            // value being edited is always visible.
+            if(ui_state->new_callsign[0] == '\0' ||
+               ui_state->new_callsign[0] == '_')
+                sniprintf(nac_buf, sizeof(nac_buf), "0x%03X",
+                          (unsigned int)last_state.settings.p25_nac);
+            else
+                sniprintf(nac_buf, sizeof(nac_buf), "0x%s",
+                          ui_state->new_callsign);
+
+            value = nac_buf;
         }
 
         gfx_printLine(1, 1, layout.top_h, CONFIG_SCREEN_HEIGHT - layout.bottom_h,
