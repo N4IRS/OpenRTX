@@ -46,7 +46,16 @@
 #define ARM_MATH_CM4
 #include <P25/vendor/arm_math.h>
 
-void update_tx(uint16_t length);
+/*
+ * Drain up to `length` samples into the idle codec half buffer.
+ *
+ * With flush == true the call ends on a buffer boundary, padding the last
+ * half with silence: use it at the end of a frame.  With flush == false the
+ * samples accumulate across calls and only a completed half is published,
+ * which lets the modulator hand samples over as it produces them instead of
+ * bursting a whole frame at once.
+ */
+void update_tx(uint16_t length, bool flush = true);
 
 static constexpr size_t P25_RX_SAMPLE_RATE = 24000;
 static constexpr size_t P25_TX_SAMPLE_RATE = 24000;

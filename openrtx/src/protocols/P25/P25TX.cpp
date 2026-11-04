@@ -45,10 +45,20 @@ static q15_t LOWPASS_FILTER[] = { 124,  -188,  -682,  1262, 556,   -621,  -1912,
                                   1262, -682,  -188,  124 };
 const uint16_t LOWPASS_FILTER_LEN = 32U;
 
-const q15_t P25_LEVELA = 1260;
-const q15_t P25_LEVELB = 420;
-const q15_t P25_LEVELC = -420;
-const q15_t P25_LEVELD = -1260;
+/*
+ * P25 C4FM symbol levels, indexed by dibit (TIA-102.BAAA):
+ *   dibit 01 -> outer positive, 00 -> inner positive,
+ *   dibit 10 -> inner negative, 11 -> outer negative.
+ *
+ * The table previously had the polarity reversed.  That put an inverted
+ * constellation on the air (DSD-FME reports "-P25p1"), which real P25
+ * receivers do not auto-correct, so they saw carrier but never synced.
+ * DSD-FME hides the bug because it tries both sync polarities.
+ */
+const q15_t P25_LEVELA = -1260; // dibit 11, outer negative
+const q15_t P25_LEVELB = -420;  // dibit 10, inner negative
+const q15_t P25_LEVELC = 420;   // dibit 00, inner positive
+const q15_t P25_LEVELD = 1260;  // dibit 01, outer positive
 
 const uint8_t P25_START_SYNC = 0x77U;
 const uint16_t TX_BUFFER_LEN = 300U;
@@ -215,6 +225,20 @@ void CP25TX::writeByte(uint8_t c)
 
         p25_txBuffer.put(uint16_t(res3));
     }
+#ifndef TASK
+    /*
+     * Hand the samples to the codec as they are produced.
+     *
+     * Draining a whole frame only after process() has generated all of it
+     * parks the transmitter away from the codec's half-buffer boundary for
+     * the whole generation time.  The codec keeps running meanwhile and
+     * wraps its circular buffer, replaying audio that was already sent; each
+     * replay duplicates 72 symbols (18 bytes), which is what inserted a
+     * second frame sync 18 bytes into every frame.  Draining one byte's
+     * worth of samples (20) at a time keeps the producer at the boundary.
+     */
+    update_tx(20, false);
+#endif
 }
 
 void CP25TX::writeSilence()
@@ -237,7 +261,7 @@ void CP25TX::writeSilence()
         p25_txBuffer.put(uint16_t(res3));
     }
 #ifndef TASK
-    update_tx(20);
+    update_tx(20, false);
 #endif
 }
 

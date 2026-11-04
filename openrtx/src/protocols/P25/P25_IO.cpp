@@ -62,6 +62,28 @@ const uint16_t TX_RINGBUFFER_SIZE = 5000U;
 #endif
 const uint16_t RX_RINGBUFFER_SIZE = 1200U;
 
+/*
+ * Size, in samples at P25_TX_SAMPLE_RATE (24 kHz), of one baseband half
+ * buffer handed to the audio codec.
+ *
+ * The codec plays a double buffer: the worker walks the buffer at the DSP
+ * rate and, when it crosses a half boundary, publishes that half and notifies
+ * the producer.  If the producer has not refilled the idle half by then, the
+ * codec wraps and replays the half it already has (output_sample() in
+ * csk6_codec.c documents this as "playback repeated a half").  Every replay
+ * duplicates 72 symbols, i.e. exactly 18 bytes, and that is what put a second
+ * frame sync 18 bytes into every P25 frame and stretched each LDU from 864 to
+ * 1152 symbols.
+ *
+ * 180 samples is one half of a 4800 baud frame's worth of slack only if the
+ * producer never leaves the boundary for more than 7.5 ms.  Generating a
+ * whole LDU (4320 samples) before handing any of it over takes far longer
+ * than that, so the codec replayed about a quarter of all halves.  720
+ * samples (30 ms) gives the transmitter 30 ms of slack in which to produce
+ * the next half, which the modulator comfortably meets.
+ */
+const uint16_t P25_TX_HALF_SAMPLES = 720U;
+
 bool p25_tx = false;
 bool p25_duplex = false;
 bool p25_pttInvert = false;
@@ -201,7 +223,7 @@ void P25_IO::init_tx()
 	 * audio.
 	 */
 
-    baseband_txbuffer = std::make_unique<int16_t[]>(2 * 180);
+    baseband_txbuffer = std::make_unique<int16_t[]>(2 * P25_TX_HALF_SAMPLES);
     idleBuffer = baseband_txbuffer.get();
     txRunning = false;
 }
@@ -232,7 +254,8 @@ bool P25_IO::start_tx(const bool invertP)
     if (outPath < 0)
         return false;
 
-    outStream = audioStream_start(outPath, baseband_txbuffer.get(), 2 * 180,
+    outStream = audioStream_start(outPath, baseband_txbuffer.get(),
+                                  2 * P25_TX_HALF_SAMPLES,
                                   P25_TX_SAMPLE_RATE,
                                   STREAM_OUTPUT | BUF_CIRC_DOUBLE);
 
@@ -337,7 +360,7 @@ static void *update_tx(void *arg)
     return NULL;
 }
 #else
-void update_tx(uint16_t length)
+void update_tx(uint16_t length, bool flush)
 {
     static int bufSize;
 
@@ -352,20 +375,22 @@ void update_tx(uint16_t length)
             if (invertPhase)
                 elem = 0 - elem; // Invert signal phase
             idleBuffer[bufSize++] = elem;
-            if (bufSize == 180) {
+            if (bufSize == P25_TX_HALF_SAMPLES) {
                 // Transmission is ongoing, syncronise with stream end before proceeding
                 outputStream_sync(outStream, true);
                 idleBuffer = outputStream_getIdleBuffer(outStream);
-                memset(idleBuffer, 0x00, 180 * sizeof(stream_sample_t));
+                memset(idleBuffer, 0x00,
+                       P25_TX_HALF_SAMPLES * sizeof(stream_sample_t));
                 bufSize = 0;
             }
         }
     }
-    if (bufSize > 0) {
+    if (flush && bufSize > 0) {
         // Transmission is ongoing, syncronise with stream end before proceeding
         outputStream_sync(outStream, true);
         idleBuffer = outputStream_getIdleBuffer(outStream);
-        memset(idleBuffer, 0x00, 180 * sizeof(stream_sample_t));
+        memset(idleBuffer, 0x00,
+               P25_TX_HALF_SAMPLES * sizeof(stream_sample_t));
         bufSize = 0;
     }
 }
