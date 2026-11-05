@@ -17,9 +17,9 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <P25/Golay24128.h>
-#include <P25/Hamming.h>
-#include <P25/AMBEFEC.h>
+#include "protocols/P25/Golay24128.h"
+#include "protocols/P25/Hamming.h"
+#include "protocols/P25/AMBEFEC.h"
 
 //#include "Log.h"
 

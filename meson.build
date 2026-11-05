@@ -131,6 +131,69 @@ else
   codec2_dep = codec2_proj.get_variable('codec2_dep')
 endif
 
+
+# IMBE vocoder (imbe_embedded engine) for P25 Phase 1, vendored in-tree:
+# the C62 target build compiles these sources directly into the Zephyr
+# image, while meson builds them as a static library for the emulator and
+# the unit tests.
+imbe_vocoder_src = ['openrtx/src/imbe_vocoder/aux_sub.cc',
+                    'openrtx/src/imbe_vocoder/basicop2.cc',
+                    'openrtx/src/imbe_vocoder/ch_decode.cc',
+                    'openrtx/src/imbe_vocoder/ch_encode.cc',
+                    'openrtx/src/imbe_vocoder/dc_rmv.cc',
+                    'openrtx/src/imbe_vocoder/decode.cc',
+                    'openrtx/src/imbe_vocoder/dsp_sub.cc',
+                    'openrtx/src/imbe_vocoder/encode.cc',
+                    'openrtx/src/imbe_vocoder/imbe2_api.cc',
+                    'openrtx/src/imbe_vocoder/imbe_vocoder.cc',
+                    'openrtx/src/imbe_vocoder/math_sub.cc',
+                    'openrtx/src/imbe_vocoder/pe_lpf.cc',
+                    'openrtx/src/imbe_vocoder/pitch_est.cc',
+                    'openrtx/src/imbe_vocoder/pitch_ref.cc',
+                    'openrtx/src/imbe_vocoder/qnt_sub.cc',
+                    'openrtx/src/imbe_vocoder/rand_gen.cc',
+                    'openrtx/src/imbe_vocoder/sa_decode.cc',
+                    'openrtx/src/imbe_vocoder/sa_encode.cc',
+                    'openrtx/src/imbe_vocoder/sa_enh.cc',
+                    'openrtx/src/imbe_vocoder/tbls.cc',
+                    'openrtx/src/imbe_vocoder/uv_synt.cc',
+                    'openrtx/src/imbe_vocoder/v_synt.cc',
+                    'openrtx/src/imbe_vocoder/v_uv_det.cc']
+
+imbe_vocoder_inc = include_directories('openrtx/src/imbe_vocoder')
+
+imbe_vocoder = static_library('imbe_vocoder',
+                              imbe_vocoder_src,
+                              include_directories: imbe_vocoder_inc)
+
+imbe_vocoder_dep = declare_dependency(include_directories: imbe_vocoder_inc,
+                                      link_with: imbe_vocoder)
+
+##
+## P25 (TIA-102 Phase 1) sources, o25 modem
+##
+
+# Link control, low speed data and FEC (Golay, Hamming, Reed-Solomon)
+p25_src_com = ['openrtx/src/protocols/P25/AMBEFEC.cpp',
+               'openrtx/src/protocols/P25/RS241213.cpp',
+               'openrtx/src/protocols/P25/P25Utils.cpp',
+               'openrtx/src/protocols/P25/P25LowSpeedData.cpp',
+               'openrtx/src/protocols/P25/P25Data.cpp',
+               'openrtx/src/protocols/P25/P25_Audio.cpp',
+               'openrtx/src/protocols/P25/Hamming.cpp',
+               'openrtx/src/protocols/P25/Golay24128.cpp']
+
+# Operating mode
+p25_src = ['openrtx/src/rtx/OpMode_P25.cpp']
+
+# C4FM modem, IMBE codec glue
+p25_modem_src = ['openrtx/src/protocols/P25/modem/DSP.cpp',
+                 'openrtx/src/protocols/P25/modem/Modulator.cpp',
+                 'openrtx/src/protocols/P25/modem/Demodulator.cpp',
+                 'openrtx/src/protocols/P25/modem/Vocoder.cpp',
+                 'openrtx/src/protocols/P25/modem/Nid.cpp',
+                 'openrtx/src/protocols/P25/modem/AudioCodec.cpp']
+
 # Catch2, C++ testing framework (only for native/linux builds)
 if not meson.is_cross_build()
   catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'])
@@ -369,9 +432,10 @@ linux_def = {'PLATFORM_LINUX': '', 'VP_USE_FILESYSTEM':''}
 
 sdl_dep     = dependency('SDL2',     required: false)
 threads_dep = dependency('threads',  required: false)
-linux_src  += openrtx_src
+linux_src  += openrtx_src + p25_src + p25_src_com + p25_modem_src
 linux_inc  += openrtx_inc
 linux_def  += openrtx_def
+linux_def  += {'CONFIG_P25': ''}
 linux_def  += {'sniprintf':'snprintf', 'vsniprintf':'vsnprintf'}
 
 #
@@ -769,7 +833,7 @@ endforeach
 linux_opts = {
   'sources'            : linux_default_src,
   'include_directories': linux_inc,
-  'dependencies'       : [sdl_dep, threads_dep, codec2_dep],
+  'dependencies'       : [sdl_dep, threads_dep, codec2_dep, imbe_vocoder_dep],
   'c_args'             : linux_c_args,
   'cpp_args'           : linux_cpp_args,
   'link_args'          : linux_l_args
@@ -778,7 +842,7 @@ linux_opts = {
 linux_small_opts = {
     'sources'            : linux_default_src,
     'include_directories': linux_inc,
-    'dependencies'       : [sdl_dep, threads_dep, codec2_dep],
+    'dependencies'       : [sdl_dep, threads_dep, codec2_dep, imbe_vocoder_dep],
     'c_args'             : linux_small_c_args,
     'cpp_args'           : linux_small_cpp_args,
     'link_args'          : linux_l_args
@@ -787,7 +851,7 @@ linux_small_opts = {
 linux_mod17_opts = {
     'sources'            : linux_mod17_src,
     'include_directories': linux_inc,
-    'dependencies'       : [sdl_dep, threads_dep, codec2_dep],
+    'dependencies'       : [sdl_dep, threads_dep, codec2_dep, imbe_vocoder_dep],
     'c_args'             : linux_mod17_c_args,
     'cpp_args'           : linux_mod17_cpp_args,
     'link_args'          : linux_l_args

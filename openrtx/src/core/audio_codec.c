@@ -6,6 +6,7 @@
 
 #include "core/audio_stream.h"
 #include "core/audio_codec.h"
+#include "core/utils.h"
 #include <pthread.h>
 #include "core/threads.h"
 // codec2 system library has a weird include prefix
@@ -217,7 +218,7 @@ static void *encodeFunc(void *arg)
 #endif
 
             sample = dsp_dcBlockFilter(&dcBlock, sample);
-            audio.data[outIdx++] = sample * CONFIG_MIC_GAIN;
+            audio.data[outIdx++] = s16_mulSat(sample, CONFIG_MIC_GAIN);
         }
 
         // CODEC2 encodes 160 speech samples (20 ms), into 8 bytes: here we

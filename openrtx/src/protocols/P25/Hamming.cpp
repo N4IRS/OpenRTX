@@ -16,7 +16,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <P25/Hamming.h>
+#include "protocols/P25/Hamming.h"
 
 #include <cstdio>
 #include <cassert>

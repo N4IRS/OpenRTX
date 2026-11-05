@@ -171,14 +171,6 @@ path = [
 precedence = "aggregate"
 SPDX-License-Identifier = "GPL-2.0-or-later"
 
-# BCH.cpp is Robert Morelos-Zaragoza's bch3.c, which is NOT GPL: it is free for
-# non-commercial use only.  The exact notice is in LICENSES/.
-[[annotations]]
-path = "openrtx/src/protocols/P25/BCH.cpp"
-precedence = "override"
-SPDX-License-Identifier = "LicenseRef-BCH-NonCommercial"
-SPDX-FileCopyrightText = "1994-1997 Robert Morelos-Zaragoza"
-
 # IMBE vocoder engine, vendored from imostlylurk/imbe_embedded (Pavel Yazev's
 # fixed-point implementation, GPL-3.0-or-later, see LICENSE.imbe_embedded).
 # Recorded here so the vendored tree keeps its upstream headers and stays

@@ -16,10 +16,10 @@
 *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include <P25/P25Data.h>
-#include <P25/P25Defines.h>
-#include <P25/P25Utils.h>
-#include <P25/Hamming.h>
+#include "protocols/P25/P25Data.h"
+#include "protocols/P25/P25Defines.h"
+#include "protocols/P25/P25Utils.h"
+#include "protocols/P25/Hamming.h"
 //#include "Log.h"
 
 #include <cstdio>

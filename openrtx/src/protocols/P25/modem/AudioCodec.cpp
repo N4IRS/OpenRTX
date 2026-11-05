@@ -101,7 +101,6 @@ static const struct biquad txHighPass = {
 };
 #endif
 
-
 void *encodeFunc(void *arg)
 {
     pathId iPath = *((pathId *)arg);

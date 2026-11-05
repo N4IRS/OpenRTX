@@ -3,7 +3,7 @@
  *   Copyright (C) 2002 by Robert H. Morelos-Zaragoza. All rights reserved.
  */
 
-#include <P25/Golay24128.h>
+#include "protocols/P25/Golay24128.h"
 
 #include <cstdio>
 #include <cassert>

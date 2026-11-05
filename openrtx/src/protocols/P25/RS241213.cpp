@@ -16,7 +16,7 @@
 *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include <P25/RS241213.h>
+#include "protocols/P25/RS241213.h"
 
 #include <cstdio>
 #include <cassert>

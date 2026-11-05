@@ -26,23 +26,23 @@ target_sources(app
     ${OPENRTX_ROOT}/platform/targets/c62/calib_C62.c
     ${OPENRTX_ROOT}/platform/drivers/stubs/cps_io_stub.c
 
-    ${OPENRTX_ROOT}/openrtx/src/core/imbe_audio_codec.cpp
     ${OPENRTX_ROOT}/openrtx/src/rtx/OpMode_P25.cpp
 
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/AMBEFEC.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/BCH.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/Golay24128.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/Hamming.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25Data.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25LowSpeedData.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25NID.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25RX.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25TX.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25Utils.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25_Audio.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/P25_IO.cpp
     ${OPENRTX_ROOT}/openrtx/src/protocols/P25/RS241213.cpp
-    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/arm_math.c
+
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/DSP.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/Demodulator.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/Modulator.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/Nid.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/AudioCodec.cpp
+    ${OPENRTX_ROOT}/openrtx/src/protocols/P25/modem/Vocoder.cpp
 
     ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/aux_sub.cc
     ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder/basicop2.cc
@@ -90,7 +90,6 @@ target_include_directories(app
     ${OPENRTX_ROOT}/openrtx/include/core
     ${OPENRTX_ROOT}/openrtx/include/protocols
     ${OPENRTX_ROOT}/openrtx/include/protocols/P25
-    ${OPENRTX_ROOT}/openrtx/include/protocols/P25/vendor
     ${OPENRTX_ROOT}/openrtx/src/imbe_vocoder
     ${OPENRTX_ROOT}/platform/targets/c62
 )

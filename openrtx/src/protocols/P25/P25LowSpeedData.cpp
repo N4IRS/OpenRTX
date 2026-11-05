@@ -16,8 +16,8 @@
 *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include <P25/P25LowSpeedData.h>
-#include <P25/P25Utils.h>
+#include "protocols/P25/P25LowSpeedData.h"
+#include "protocols/P25/P25Utils.h"
 
 #include <cstdio>
 #include <cassert>

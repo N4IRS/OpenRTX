@@ -1,40 +1,23 @@
 /*
- * SPDX-FileCopyrightText: Copyright 2022-2026 OpenRTX Contributors
+ * SPDX-FileCopyrightText: Copyright 2020-2026 OpenRTX Contributors
+ *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/***************************************************************************
- *   Copyright (C) 2022 - 2023 by Federico Amedeo Izzo IU2NUO,             *
- *                                Niccolò Izzo IU2KIN                      *
- *                                Frederik Saraci IU2NRO                   *
- *                                Silvano Seva IU2KWO                      *
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This program is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                          *
- *                                                                         *
- *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
- *                                                                         *
- *   Modified by KD0OSS for P25 on Module17/OpenRTX                        *
- ***************************************************************************/
 #ifndef OPMODE_P25_H
 #define OPMODE_P25_H
 
-#include "hwconfig.h"
-#include <P25/P25_IO.hpp>
-#include <audio_path.h>
+#include "core/audio_path.h"
+#include "protocols/P25/P25Data.h"
+#include "protocols/P25/P25Audio.h"
+#include "protocols/P25/P25LowSpeedData.h"
+#include "protocols/P25/modem/Modulator.hpp"
+#include "protocols/P25/modem/Demodulator.hpp"
 #include "OpMode.hpp"
-#include <string>
 
 /**
- * Specialisation of the OpMode class for the management of P25 operating mode.
+ * Specialisation of the OpMode class for the management of P25 Phase 1
+ * (C4FM) conventional voice.
  */
 class OpMode_P25 : public OpMode
 {
@@ -49,8 +32,6 @@ public:
      */
     ~OpMode_P25();
 
-    virtual void reset();
-
     /**
      * Enable the operating mode.
      *
@@ -61,8 +42,7 @@ public:
 
     /**
      * Disable the operating mode. This function stops the DMA transfers
-     * between the baseband, microphone and speakers. It also ensures that
-     * the radio, the audio amplifier and the microphone are in OFF state.
+     * corresponding to the baseband signal and shuts down the IMBE codec.
      *
      * Application must ensure this function is being called when exiting the
      * current operating mode.
@@ -74,17 +54,18 @@ public:
      * Application code has to call this function periodically, to ensure proper
      * functionality.
      *
-     * @param status: pointer to the rtxStatus_t structure containing the current
-     * RTX status. Internal FSM may change the current value of the opStatus flag.
-     * @param newCfg: flag used inform the internal FSM that a new RTX configuration
-     * has been applied.
+     * @param status: pointer to the rtxStatus_t structure containing the
+     * current RTX status. Internal FSM may change the current value of the
+     * opStatus flag.
+     * @param newCfg: flag used inform the internal FSM that a new RTX
+     * configuration has been applied.
      */
     virtual void update(rtxStatus_t *const status, const bool newCfg) override;
 
     /**
-     * Get the mode identifier corresponding to the OpMode class.
+     * Get the mode identifier.
      *
-     * @return the corresponding flag from the opmode enum.
+     * @return the constant OPMODE_P25.
      */
     virtual opmode getID() override
     {
@@ -94,7 +75,8 @@ public:
     /**
      * Check if RX squelch is open.
      *
-     * @return true if RX squelch is open.
+     * @return true if the demodulator is locked on a data unit carrying our
+     * NAC.
      */
     virtual bool rxSquelchOpen() override
     {
@@ -126,20 +108,70 @@ private:
      */
     void txState(rtxStatus_t *const status);
 
-    uint8_t pthSts;     ///< Flag for audio path open.
-    uint16_t delay;
-    uint32_t m_dstid;   ///< P25 Destination ID (DMR ID/TG).
-    uint32_t m_srcid;   ///< P25 Source Id (DMR ID).
-    bool startRx;       ///< Flag for RX management.
-    bool startTx;       ///< Flag for TX management.
-    bool locked;        ///< Flag for signal lock.
-    bool dataValid;     ///< Demodulated data is valid
-    bool invertTxPhase; ///< TX signal phase inversion setting.
-    bool invertRxPhase; ///< RX signal phase inversion setting.
-    bool end_tx;
-    pathId rxAudioPath; ///< Audio path ID for RX.
-    pathId txAudioPath; ///< Audio path ID for TX.
-    P25_IO p25_io;      ///< P25 IO control.
+    /**
+     * Handle a received data unit.
+     *
+     * @param status: pointer to the rtxStatus_t structure containing the
+     * current RTX status.
+     */
+    void handleUnit(rtxStatus_t *const status);
+
+    /**
+     * Close the RX audio path and stop the codec, if open.
+     */
+    void stopRxAudio();
+
+    /**
+     * Decide whether the call described by the received link control is
+     * for us, according to the destination ID check setting.
+     *
+     * @param status: pointer to the rtxStatus_t structure containing the
+     * current RTX status.
+     * @return true if the call's audio is to be played.
+     */
+    bool callAccepted(const rtxStatus_t *const status);
+
+    /**
+     * Build and send one voice unit (LDU1 or LDU2) from nine IMBE frames
+     * taken from the codec.
+     *
+     * @param ldu2: build an LDU2, else an LDU1.
+     */
+    void sendVoiceUnit(const bool ldu2);
+
+    /*
+     * Transmit level: the TX level setting is kept in the same units as the
+     * previous P25 implementation, where level 180 produced a 17300 counts
+     * outer symbol level (0.93x spec deviation on the CS7000P LINE_IN /
+     * HR_C6000 path).
+     */
+    static constexpr float LEVEL_COUNTS_PER_STEP = 96.0f;
+
+    /// Receive any NAC when the NAC setting is this value.
+    static constexpr uint16_t NAC_ANY = 0xF7E;
+
+    /// Talkgroup addressed to every unit.
+    static constexpr uint32_t TGID_ALL_CALL = 0xFFFF;
+
+    bool startRx;             ///< Flag for RX management.
+    bool startTx;             ///< Flag for TX management.
+    bool locked;              ///< Flag for modem lock.
+    bool dataValid;           ///< A voice unit with our NAC is being received.
+    bool invertTxPhase;       ///< TX signal phase inversion setting.
+    bool invertRxPhase;       ///< RX signal phase inversion setting.
+    bool ldu2Next;            ///< Next voice unit to send is an LDU2.
+    bool callForUs;           ///< The call being received passed the ID check.
+    uint16_t txNac;           ///< NAC of the transmission in progress.
+    pathId rxAudioPath;       ///< Audio path ID for RX.
+    pathId txAudioPath;       ///< Audio path ID for TX.
+
+    P25::Modulator modulator; ///< C4FM modulator.
+    P25::Demodulator demodulator; ///< C4FM demodulator.
+    CP25Data rxData;              ///< Link control of the received call.
+    CP25Data txData;              ///< Link control of our call.
+    CP25Audio audio;              ///< IMBE frame placement and FEC.
+    CP25LowSpeedData lsd;         ///< Low speed data of our call.
+    uint8_t txUnit[216];          ///< Unit under construction.
 };
 
 #endif /* OPMODE_P25_H */
