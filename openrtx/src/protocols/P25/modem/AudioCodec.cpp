@@ -61,6 +61,47 @@ ImbeFrame queue[QUEUE_SIZE];
 
 Vocoder vocoder;
 
+#ifndef PLATFORM_LINUX
+/*
+ * Transmit audio shaping for IMBE (C62, verified on air).
+ *
+ * IMBE codes a 3.4 kHz-wide spectrum, so rumble below the speech band only
+ * consumes spectral bits: this microphone picks up a lot of it (handling,
+ * breath, proximity effect), and the received audio came out boomy and
+ * dull. A second-order high-pass at 200 Hz makes the coded spectrum
+ * closer to speech, which the receiver renders as noticeably clearer
+ * audio. A high shelf was tried as well and dropped as harsh; see the
+ * C62 notes.
+ *
+ * The filter is an RBJ biquad designed for fs = 8 kHz; the coefficients
+ * below are their normalised values.
+ */
+struct biquad {
+    float b0, b1, b2, a1, a2;
+    float x1, x2, y1, y2;
+};
+
+static inline float biquadProcess(struct biquad *q, float x)
+{
+    float y = q->b0 * x + q->b1 * q->x1 + q->b2 * q->x2 - q->a1 * q->y1
+            - q->a2 * q->y2;
+
+    q->x2 = q->x1;
+    q->x1 = x;
+    q->y2 = q->y1;
+    q->y1 = y;
+
+    return y;
+}
+
+/* 200 Hz Butterworth high-pass: -3 dB at 200 Hz, -24 dB at 50 Hz. */
+static const struct biquad txHighPass = {
+    0.89485775f, -1.78971550f, 0.89485775f, -1.77863008f, 0.80080093f,
+    0.0f,        0.0f,         0.0f,        0.0f
+};
+#endif
+
+
 void *encodeFunc(void *arg)
 {
     pathId iPath = *((pathId *)arg);
@@ -91,6 +132,11 @@ void *encodeFunc(void *arg)
 
     dsp_resetState(dcBlock);
     dsp_resetState(decimator);
+#ifndef PLATFORM_LINUX
+    // Fresh filter state for every transmission: the encoder thread is
+    // started per call, so a local biquad is naturally per-call.
+    struct biquad txHpf = txHighPass;
+#endif
 
     while (reqStop == false) {
         // Invalid audio path, quit
@@ -115,6 +161,11 @@ void *encodeFunc(void *arg)
 #endif
 
             sample = dsp_dcBlockFilter(&dcBlock, sample);
+#ifndef PLATFORM_LINUX
+            // High-pass the microphone before the gain and the vocoder:
+            // rumble only consumes spectral bits the vocoder needs.
+            sample = static_cast<int16_t>(biquadProcess(&txHpf, sample));
+#endif
             audio.data[outIdx++] = s16_mulSat(sample, CONFIG_MIC_GAIN);
         }
 
@@ -302,7 +353,14 @@ void AudioCodec::init()
     readPos = 0;
     writePos = 0;
     numElements = 0;
+
     vocoder.init();
+
+#if defined(PLATFORM_C62)
+    // Enhanced encoder mode (leashed pitch tracking, voicing smoothing),
+    // verified on air on the C62: speech clearer than the plain encoder.
+    vocoder.setEnh(true);
+#endif
 }
 
 void AudioCodec::terminate()

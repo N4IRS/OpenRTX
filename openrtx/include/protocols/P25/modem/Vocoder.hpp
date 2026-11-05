@@ -44,6 +44,14 @@ public:
     void init();
 
     /**
+     * Enable or disable the enhanced encoder mode (leashed pitch
+     * tracking, voicing smoothing). May be called any time after init().
+     *
+     * @param on: true to enable the enhanced mode.
+     */
+    void setEnh(bool on);
+
+    /**
      * Release the vocoder states.
      */
     void terminate();

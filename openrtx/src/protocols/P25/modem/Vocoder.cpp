@@ -25,6 +25,11 @@ void Vocoder::init()
     initialised = true;
 }
 
+void Vocoder::setEnh(bool on)
+{
+    imbe2_encoder_set_enh(encState, on ? 1 : 0);
+}
+
 void Vocoder::terminate()
 {
     initialised = false;
