@@ -1276,7 +1276,7 @@ linux = alias_target('linux', linux_targets)
 unit_test_opts = {'c_args'             : linux_c_args,
                   'cpp_args'           : linux_cpp_args,
                   'include_directories': linux_inc,
-                  'dependencies'       : [sdl_dep, threads_dep, codec2_dep, catch2_dep],
+                  'dependencies'       : [sdl_dep, threads_dep, codec2_dep, catch2_dep, imbe_vocoder_dep],
                   'link_args'          : linux_l_args}
 
 unit_test_src = linux_src + ui_src_default
@@ -1324,6 +1324,18 @@ minmea_conversion_test = executable('minmea_conversion_test',
 ui_check_standby_test = executable('ui_check_standby_test',
                                     sources : unit_test_src + ['tests/unit/ui_check_standby.cpp'],
                                     kwargs  : unit_test_opts)
+
+p25_o25_loopback_test = executable('p25_o25_loopback_test',
+                                   sources : unit_test_src + ['tests/unit/P25_o25_loopback.cpp'],
+                                   kwargs  : unit_test_opts)
+
+p25_o25_nid_test = executable('p25_o25_nid_test',
+                              sources : unit_test_src + ['tests/unit/P25_o25_nid.cpp'],
+                              kwargs  : unit_test_opts)
+
+p25_o25_framing_test = executable('p25_o25_framing_test',
+                                  sources : unit_test_src + ['tests/unit/P25_o25_framing.cpp'],
+                                  kwargs  : unit_test_opts)
 
 m17_packet_test = executable('m17_packet_test',
                               sources : unit_test_src + ['tests/unit/M17_packet.cpp'],
@@ -1373,6 +1385,9 @@ test('Codeplug Test',         cps_test)
 ## test('Linux InputStream Test', linux_inputStream_test)
 test('minmea conversion Test', minmea_conversion_test)
 test('UI Check Standby Test', ui_check_standby_test)
+test('P25 o25 Modem Loopback Unit Test', p25_o25_loopback_test)
+test('P25 o25 NID Unit Test', p25_o25_nid_test)
+test('P25 o25 Framing Unit Test', p25_o25_framing_test)
 test('M17 Packet Frame Test', m17_packet_test)
 test('C62 Calibration Test', c62_calib_test)
 test('DSP Oversampling Test', dsp_oversampling_test)
