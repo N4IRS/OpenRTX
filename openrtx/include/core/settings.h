@@ -116,7 +116,7 @@ static const settings_t default_settings =
   ,0                            // Empty P25 Destination ID
   ,0x293                        // Default P25 NAC (12 bit, hex)
   ,1                            // P25 RX invert
-  ,0                            // P25 TX invert
+  ,1                            // P25 TX invert (required on the C62)
   ,0                            // Check P25 destination ID on RX
 #endif
 };

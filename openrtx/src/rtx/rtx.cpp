@@ -67,7 +67,7 @@ void rtx_init(pthread_mutex_t *m)
     rtxStatus.p25Nac           = 0;
     rtxStatus.p25TxLevel       = 0;
     rtxStatus.p25Preamble      = 0;
-    rtxStatus.p25TxInvert      = 0;
+    rtxStatus.p25TxInvert      = 1;
     rtxStatus.p25RxInvert      = 0;
     rtxStatus.p25DstCheck      = 0;
 #endif
