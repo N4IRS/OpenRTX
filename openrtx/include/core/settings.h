@@ -52,7 +52,6 @@ typedef struct
     bool    gpsSetTime;           // Use GPS to ajust RTC time
     char    M17_meta_text[53];    // M17 Meta Text to send
 #ifdef CONFIG_P25
-    uint8_t  p25_rx_level;        // P25 RX BB level (kept for nvmem layout; unused by the o25 demod)
     uint8_t  p25_preamble;        // P25 TX preamble option, bring-up aid
     uint8_t  p25_tx_level;        // P25 TX BB level
     uint32_t p25_srcId;           // P25 Source ID (DMR ID)
@@ -110,7 +109,6 @@ static const settings_t default_settings =
     false,                        // Update RTC with GPS
     "OpenRTX"                     // Default M17 meta text
 #ifdef CONFIG_P25
-  ,100                          // Default P25 RX BB level (unused by the o25 demod)
   ,P25_PREAMBLE_KENWOOD_SHORT   // Default P25 TX preamble: official Kenwood
                                 // configuration, +3,+3,-3,-3 x 144 (120 ms)
   ,180                          // Default P25 TX BB level (0.95x spec deviation)

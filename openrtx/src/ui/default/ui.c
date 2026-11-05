@@ -187,10 +187,11 @@ const char * p25_items[] =
     "DMR Id",
     "Dst Id",
     "NAC (hex)",
-    "RX Level",
+    "Preamble",
     "TX Level",
     "RX Invert",
-    "TX Invert"
+    "TX Invert",
+    "Dst RX Check"
 };
 #endif
 
@@ -354,6 +355,23 @@ static void _ui_changeBBLevel(char *buf, size_t len, uint8_t current,
 
     sniprintf(buf, len, "%u", (unsigned int) value);
     ui_state.input_position = (uint8_t) strlen(buf);
+}
+
+/**
+ * \internal
+ * Cycle through the P25 preamble options, wrapping around.
+ */
+static void _ui_changePreamble(uint8_t *option, int variation)
+{
+    int value = (int)*option + variation;
+
+    if(value >= P25_PREAMBLE_NUM)
+        value = 0;
+
+    if(value < 0)
+        value = P25_PREAMBLE_NUM - 1;
+
+    *option = (uint8_t) value;
 }
 
 /**
@@ -1535,6 +1553,35 @@ static enum vpGPSInfoFlags GetGPSDirectionOrSpeedChanged()
 }
 #endif // CONFIG_GPS
 
+#if defined(CONFIG_P25)
+// Key handling for the P25 GID input, shared by the settings screen and
+// the main screens: returns true when the message has been consumed.
+static bool _ui_fsm_p25GidInput(ui_state_t *ui_state, kbd_msg_t msg,
+                                bool *sync_rtx)
+{
+    if (msg.keys & KEY_ENTER) {
+        _ui_textInputConfirm(ui_state->new_callsign);
+        uint32_t gid = (uint32_t) strtoul(ui_state->new_callsign, NULL, 10);
+        // The destination field is sixteen bits wide: group IDs and the
+        // all-call value must fit, anything larger is rejected.
+        if (gid <= 0xFFFF) {
+            state.settings.p25_dstId = gid;
+            ui_state->edit_dstid = false;
+            *sync_rtx = true;
+        }
+    } else if (msg.keys & KEY_ESC)
+        ui_state->edit_dstid = false;
+    else if (msg.keys & KEY_UP || msg.keys & KEY_DOWN || msg.keys & KEY_LEFT
+             || msg.keys & KEY_RIGHT)
+        _ui_textInputDel(ui_state->new_callsign);
+    else if (input_isCharPressed(msg))
+        _ui_textInputNumber(ui_state->new_callsign, 7, msg);
+    else
+        return false;
+    return true;
+}
+#endif
+
 void ui_updateFSM(bool *sync_rtx)
 {
     // Check for events
@@ -1651,6 +1698,14 @@ void ui_updateFSM(bool *sync_rtx)
                 if ((ui_state.input_locked == true) && (skipLock == false))
                     break;
 
+#ifdef CONFIG_P25
+                if(state.channel.mode == OPMODE_P25 && ui_state.edit_dstid)
+                {
+                    _ui_fsm_p25GidInput(&ui_state, msg, sync_rtx);
+                    break;
+                }
+                else
+#endif
                 if(ui_state.edit_mode)
                 {
                     #ifdef CONFIG_M17
@@ -1729,6 +1784,17 @@ void ui_updateFSM(bool *sync_rtx)
                         }
                         else
                         #endif
+#ifdef CONFIG_P25
+                        if(state.channel.mode == OPMODE_P25)
+                        {
+                            // Enable GID input
+                            ui_state.edit_dstid = true;
+                            // Reset text input variables
+                            _ui_textInputReset(ui_state.new_callsign,
+                                    sizeof(ui_state.new_callsign));
+                        }
+                        else
+#endif
                         {
                             if(!state.tone_enabled)
                             {
@@ -1842,6 +1908,14 @@ void ui_updateFSM(bool *sync_rtx)
                 }
                 if (ui_state.input_locked)
                     break;
+#ifdef CONFIG_P25
+                if (state.channel.mode == OPMODE_P25 && ui_state.edit_dstid)
+                {
+                    _ui_fsm_p25GidInput(&ui_state, msg, sync_rtx);
+                    break;
+                }
+                else
+#endif
                 // M17 Destination callsign input
                 if(ui_state.edit_mode)
                 {
@@ -1922,6 +1996,16 @@ void ui_updateFSM(bool *sync_rtx)
                             _ui_textInputReset(ui_state.new_callsign,
                                     sizeof(ui_state.new_callsign));
                         }
+#ifdef CONFIG_P25
+                        else if(state.channel.mode == OPMODE_P25)
+                        {
+                            // Enable GID input
+                            ui_state.edit_dstid = true;
+                            // Reset text input variables
+                            _ui_textInputReset(ui_state.new_callsign,
+                                    sizeof(ui_state.new_callsign));
+                        }
+#endif
                         else
                         {
                             if(!state.tone_enabled)
@@ -2669,28 +2753,17 @@ void ui_updateFSM(bool *sync_rtx)
                             msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
                         _ui_textInputDel(ui_state.new_callsign);
                 }
-                else if(ui_state.edit_rx_level)
+                else if(ui_state.edit_preamble)
                 {
-                    if(msg.keys & KEY_ENTER)
-                    {
-                        state.settings.p25_rx_level =
-                            _ui_p25BBLevel(ui_state.new_p25_buf,
-                                           state.settings.p25_rx_level);
-                        ui_state.edit_rx_level = false;
-                        *sync_rtx = true;
-                    }
-                    else if(msg.keys & KEY_ESC)
-                        ui_state.edit_rx_level = false;
-                    else if(input_isNumberPressed(msg))
-                        _ui_textInputNumber(ui_state.new_p25_buf, 4, msg);
-                    else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
-                        _ui_changeBBLevel(ui_state.new_p25_buf,
-                                          sizeof(ui_state.new_p25_buf),
-                                          state.settings.p25_rx_level, -1);
-                    else if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT)
-                        _ui_changeBBLevel(ui_state.new_p25_buf,
-                                          sizeof(ui_state.new_p25_buf),
-                                          state.settings.p25_rx_level, +1);
+                    if(msg.keys & KEY_ENTER || msg.keys & KEY_ESC)
+                        ui_state.edit_preamble = false;
+                    else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT ||
+                            msg.keys & KEY_LEFT)
+                        _ui_changePreamble(&state.settings.p25_preamble, -1);
+                    else if(msg.keys & KEY_UP || msg.keys & KNOB_RIGHT ||
+                            msg.keys & KEY_RIGHT)
+                        _ui_changePreamble(&state.settings.p25_preamble, +1);
+                    *sync_rtx = true;
                 }
                 else if(ui_state.edit_tx_level)
                 {
@@ -2731,10 +2804,8 @@ void ui_updateFSM(bool *sync_rtx)
                             ui_state.edit_nac = true;
                             _ui_textInputReset(ui_state.new_callsign, sizeof(ui_state.new_callsign));
                             break;
-                        case M_P25RXLEVEL:
-                            _ui_textInputReset(ui_state.new_p25_buf,
-                                               sizeof(ui_state.new_p25_buf));
-                            ui_state.edit_rx_level = true;
+                        case M_P25PREAMBLE:
+                            ui_state.edit_preamble = true;
                             break;
                         case M_P25TXLEVEL:
                             _ui_textInputReset(ui_state.new_p25_buf,
@@ -2747,6 +2818,10 @@ void ui_updateFSM(bool *sync_rtx)
                             break;
                         case M_TXINVERT:
                             state.settings.p25_tx_invert = !state.settings.p25_tx_invert;
+                            *sync_rtx = true;
+                            break;
+                        case M_DSTCHECK:
+                            state.settings.p25_dst_check = !state.settings.p25_dst_check;
                             *sync_rtx = true;
                             break;
                         default:

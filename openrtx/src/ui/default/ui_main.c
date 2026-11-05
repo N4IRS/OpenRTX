@@ -234,8 +234,19 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
             }
             else
             {
-                gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-                          color_white, "P25 Idle");
+                // Our talkgroup and the NAC on the line above the frequency.
+                // While the GID is being typed from the main screen, show
+                // what is being typed.
+                char gid[11];
+                if (ui_state->edit_dstid)
+                    sniprintf(gid, sizeof(gid), "%s", ui_state->new_callsign);
+                else
+                    sniprintf(gid, sizeof(gid), "%lu",
+                              (unsigned long) last_state.settings.p25_dstId);
+                gfx_print(layout.line2_pos, layout.line2_font,
+                          TEXT_ALIGN_CENTER, color_white, "GID:%s NAC:$%03lX",
+                          gid,
+                          (unsigned long) (last_state.settings.p25_nac & 0xFFF));
             }
             break;
         }

@@ -163,10 +163,11 @@ enum p25Items
     M_SRCID = 0,
     M_DSTID,
     M_NAC,
-    M_P25RXLEVEL,
+    M_P25PREAMBLE,
     M_P25TXLEVEL,
     M_RXINVERT,
-    M_TXINVERT
+    M_TXINVERT,
+    M_DSTCHECK
 };
 #endif
 
@@ -244,7 +245,7 @@ typedef struct ui_state_t
     bool edit_srcid;
     bool edit_dstid;
     bool edit_nac;
-    bool edit_rx_level;
+    bool edit_preamble;
     bool edit_tx_level;
     bool edit_invert;
     char new_p25_buf[16];

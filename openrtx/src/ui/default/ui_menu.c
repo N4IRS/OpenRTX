@@ -474,9 +474,17 @@ int _ui_getP25ValueName(char *buf, uint8_t max_len, uint8_t index)
         case M_NAC:
             sniprintf(buf, max_len, "0x%03X", (int)last_state.settings.p25_nac);
             break;
-        case M_P25RXLEVEL:
-            sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_rx_level);
+        case M_P25PREAMBLE: {
+            static const char *const names[P25_PREAMBLE_NUM] = {
+                "TIA 180ms", "MMDVM",   "KDW 144",
+                "KDW 255",   "SWP 144", "SWP 255",
+            };
+            uint8_t option = last_state.settings.p25_preamble;
+            if (option >= P25_PREAMBLE_NUM)
+                option = P25_PREAMBLE_KENWOOD_SHORT;
+            sniprintf(buf, max_len, "%s", names[option]);
             break;
+        }
         case M_P25TXLEVEL:
             sniprintf(buf, max_len, "%d", (int)last_state.settings.p25_tx_level);
             break;
@@ -487,6 +495,11 @@ int _ui_getP25ValueName(char *buf, uint8_t max_len, uint8_t index)
             break;
         case M_TXINVERT:
             sniprintf(buf, max_len, "%s", (last_state.settings.p25_tx_invert) ?
+                                                           currentLanguage->on :
+                                                           currentLanguage->off);
+            break;
+        case M_DSTCHECK:
+            sniprintf(buf, max_len, "%s", (last_state.settings.p25_dst_check) ?
                                                            currentLanguage->on :
                                                            currentLanguage->off);
             break;
@@ -1100,13 +1113,13 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
               color_white, "P25 Settings");
 
     if(ui_state->edit_srcid || ui_state->edit_dstid || ui_state->edit_nac ||
-       ui_state->edit_rx_level || ui_state->edit_tx_level)
+       ui_state->edit_preamble || ui_state->edit_tx_level)
     {
         const char *label = "";
         if(ui_state->edit_srcid) label = "DMR Id:";
         else if(ui_state->edit_dstid) label = "Dst Id:";
         else if(ui_state->edit_nac) label = "NAC (hex):";
-        else if(ui_state->edit_rx_level) label = "RX Level:";
+        else if(ui_state->edit_preamble) label = "Preamble:";
         else if(ui_state->edit_tx_level) label = "TX Level:";
 
         gfx_printLine(1, 4, layout.top_h, CONFIG_SCREEN_HEIGHT - layout.bottom_h,
@@ -1120,13 +1133,11 @@ void _ui_drawSettingsP25(ui_state_t* ui_state)
         char level_buf[8];
         char nac_buf[8];
 
-        if(ui_state->edit_rx_level || ui_state->edit_tx_level)
+        if(ui_state->edit_tx_level)
         {
             if(ui_state->new_p25_buf[0] == '\0' || ui_state->new_p25_buf[0] == '_')
                 sniprintf(level_buf, sizeof(level_buf), "%u",
-                          (unsigned int)(ui_state->edit_rx_level ?
-                                         last_state.settings.p25_rx_level :
-                                         last_state.settings.p25_tx_level));
+                          (unsigned int)last_state.settings.p25_tx_level);
             else
                 sniprintf(level_buf, sizeof(level_buf), "%s",
                           ui_state->new_p25_buf);
