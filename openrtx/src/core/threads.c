@@ -89,6 +89,17 @@ void *ui_threadFunc(void *arg)
             rtx_cfg.canRxEn = state.settings.m17_can_rx;
             strncpy(rtx_cfg.source_address,      state.settings.callsign, 10);
             strncpy(rtx_cfg.destination_address, state.settings.m17_dest, 10);
+#if defined(CONFIG_P25)
+            // Copy new P25 NAC, IDs, level and options
+            rtx_cfg.p25Nac       = state.settings.p25_nac;
+            rtx_cfg.p25SrcId     = state.settings.p25_srcId;
+            rtx_cfg.p25DstId     = state.settings.p25_dstId;
+            rtx_cfg.p25TxLevel   = state.settings.p25_tx_level;
+            rtx_cfg.p25Preamble  = state.settings.p25_preamble;
+            rtx_cfg.p25TxInvert  = state.settings.p25_tx_invert;
+            rtx_cfg.p25RxInvert  = state.settings.p25_rx_invert;
+            rtx_cfg.p25DstCheck  = state.settings.p25_dst_check;
+#endif
 
             pthread_mutex_unlock(&rtx_mutex);
 

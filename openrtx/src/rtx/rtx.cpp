@@ -62,6 +62,14 @@ void rtx_init(pthread_mutex_t *m)
 #ifdef CONFIG_P25
     rtxStatus.P25_SrcId        = 0;
     rtxStatus.P25_DstId        = 0;
+    rtxStatus.p25SrcId         = 0;
+    rtxStatus.p25DstId         = 0;
+    rtxStatus.p25Nac           = 0;
+    rtxStatus.p25TxLevel       = 0;
+    rtxStatus.p25Preamble      = 0;
+    rtxStatus.p25TxInvert      = 0;
+    rtxStatus.p25RxInvert      = 0;
+    rtxStatus.p25DstCheck      = 0;
 #endif
     currMode = &noMode;
 

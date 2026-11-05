@@ -52,16 +52,37 @@ typedef struct
     bool    gpsSetTime;           // Use GPS to ajust RTC time
     char    M17_meta_text[53];    // M17 Meta Text to send
 #ifdef CONFIG_P25
-    uint8_t  p25_rx_level;        // P25 RX BB level
+    uint8_t  p25_rx_level;        // P25 RX BB level (kept for nvmem layout; unused by the o25 demod)
+    uint8_t  p25_preamble;        // P25 TX preamble option, bring-up aid
     uint8_t  p25_tx_level;        // P25 TX BB level
     uint32_t p25_srcId;           // P25 Source ID (DMR ID)
     uint32_t p25_dstId;           // P25 Destination ID (DMR ID or TG)
     uint16_t p25_nac;             // P25 NAC
     uint8_t  p25_rx_invert  : 1,  // P25 RX signal invert
-             p25_tx_invert  : 1;  // P25 TX signal invert
+             p25_tx_invert  : 1,  // P25 TX signal invert
+             p25_dst_check  : 1;  // Check P25 destination ID on RX
 #endif
 }
 __attribute__((packed)) settings_t;
+
+#ifdef CONFIG_P25
+/*
+ * P25 TX preamble options: field-test/bring-up aid. The Kenwood options
+ * are an official fielded configuration (+3,+3,-3,-3, 144 or 255
+ * repetitions), TIA is the alternating +-3 preamble, MMDVM the repeated
+ * 0x77 octets and the sweep visits all four levels.
+ */
+typedef enum
+{
+    P25_PREAMBLE_TIA180 = 0,
+    P25_PREAMBLE_MMDVM,
+    P25_PREAMBLE_KENWOOD_SHORT,
+    P25_PREAMBLE_KENWOOD_LONG,
+    P25_PREAMBLE_SWEEP_SHORT,
+    P25_PREAMBLE_SWEEP_LONG,
+    P25_PREAMBLE_NUM
+} p25_preamble_t;
+#endif
 
 
 static const settings_t default_settings =
@@ -89,13 +110,16 @@ static const settings_t default_settings =
     false,                        // Update RTC with GPS
     "OpenRTX"                     // Default M17 meta text
 #ifdef CONFIG_P25
-  ,100                          // Default P25 RX BB level
+  ,100                          // Default P25 RX BB level (unused by the o25 demod)
+  ,P25_PREAMBLE_KENWOOD_SHORT   // Default P25 TX preamble: official Kenwood
+                                // configuration, +3,+3,-3,-3 x 144 (120 ms)
   ,180                          // Default P25 TX BB level (0.95x spec deviation)
   ,0                            // Empty P25 Source ID
   ,0                            // Empty P25 Destination ID
   ,0x293                        // Default P25 NAC (12 bit, hex)
   ,1                            // P25 RX invert
   ,0                            // P25 TX invert
+  ,0                            // Check P25 destination ID on RX
 #endif
 };
 
